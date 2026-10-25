@@ -1,0 +1,38 @@
+name: Crear APK de Android
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main, master]
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: android-actions/setup-android@v3
+
+      - name: Preparar el proyecto Android
+        working-directory: app-android
+        run: |
+          npm install
+          node prep.js
+          npx cap add android
+          npx @capacitor/assets generate --android --assetPath resources || echo "Sin iconos personalizados"
+          npx cap sync android
+
+      - name: Compilar el APK
+        working-directory: app-android/android
+        run: ./gradlew assembleDebug
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: salamence-music-apk
+          path: app-android/android/app/build/outputs/apk/debug/app-debug.apk

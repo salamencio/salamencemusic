@@ -1,0 +1,23 @@
+{
+  "name": "salamence-music-android",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Empaquetado de Salamence music como app de Android (APK) con Capacitor",
+  "scripts": {
+    "prep": "node prep.js",
+    "add": "npx cap add android",
+    "sync": "node prep.js && npx cap sync android",
+    "open": "npx cap open android",
+    "icons": "npx @capacitor/assets generate --android --assetPath resources"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.2.0",
+    "@capacitor/core": "^6.2.0",
+    "@capacitor/filesystem": "^6.0.2",
+    "@capacitor/share": "^6.0.3"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^6.2.0"
+  }
+}

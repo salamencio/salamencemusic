@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0d1116">
+  <title>Salamence music</title>
+  <link rel="icon" href="assets/salamence.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="assets/icon-192.png">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand"><img class="brand-logo" src="assets/salamence.png" alt=""><span>Salamence <b>music</b></span></div>
+      <nav>
+        <button class="nav-item active" data-view="home"><span class="ic" data-icon="home" data-size="22"></span><span class="label">Inicio</span></button>
+        <button class="nav-item" data-view="search"><span class="ic" data-icon="search" data-size="22"></span><span class="label">Buscar</span></button>
+        <button class="nav-item" data-view="library"><span class="ic" data-icon="library" data-size="22"></span><span class="label">Tu biblioteca</span></button>
+        <button class="nav-item" data-view="albums"><span class="ic" data-icon="disc" data-size="22"></span><span class="label">Álbumes</span></button>
+        <button class="nav-item only-mobile" data-view="playlists"><span class="ic" data-icon="list" data-size="22"></span><span class="label">Listas</span></button>
+        <button class="nav-item" data-view="liked"><span class="ic" data-icon="heart" data-size="22"></span><span class="label">Favoritos</span></button>
+      </nav>
+      <div class="side-head"><span>Tus listas</span><span class="side-btns"><button id="sort-playlists" class="icon-btn sm" title="Ordenar mis listas" aria-label="Ordenar mis listas" data-icon="sort" data-size="17"></button><button id="new-playlist" class="icon-btn sm" title="Crear lista" aria-label="Crear lista" data-icon="plus" data-size="18"></button></span></div>
+      <div id="playlist-list" class="playlist-list"></div>
+      <div class="sidebar-note">Tus canciones se guardan en este equipo. No hace falta cuenta ni conexión.</div>
+    </aside>
+
+    <main class="main" id="main">
+      <header class="topbar">
+        <div class="arrows">
+          <button class="icon-btn" id="back" aria-label="Atrás" title="Atrás" data-icon="chevL" data-size="20"></button>
+          <button class="icon-btn" id="forward" aria-label="Adelante" title="Adelante" data-icon="chevR" data-size="20"></button>
+        </div>
+        <div class="top-actions">
+          <button id="backup-btn" class="icon-btn" title="Copia de seguridad: exportar o importar" aria-label="Copia de seguridad" data-icon="database" data-size="20"></button>
+          <button id="add-folder" class="ghost-button"><span data-icon="folder" data-size="18"></span>Añadir carpeta</button>
+          <button id="add-music" class="primary-button"><span data-icon="plus" data-size="18"></span>Añadir música</button>
+          <input id="file-picker" type="file" accept="audio/*,.flac,.opus,.m4a,.wma" multiple hidden>
+          <input id="folder-picker" type="file" webkitdirectory multiple hidden>
+        </div>
+      </header>
+      <div id="selbar" class="selbar" hidden><div class="selbar-in">
+        <span id="sel-count"></span>
+        <div class="sel-actions">
+          <button class="ghost-button sm" data-sel="play"><span class="ic" data-icon="play" data-size="14"></span>Reproducir</button>
+          <button class="ghost-button sm" data-sel="queue"><span class="ic" data-icon="queue" data-size="16"></span>Añadir a la cola</button>
+          <button class="ghost-button sm" data-sel="more"><span class="ic" data-icon="dots" data-size="18"></span>Más</button>
+        </div>
+        <button class="icon-btn sm" data-sel="clear" title="Quitar selección (Esc)" aria-label="Quitar selección" data-icon="x" data-size="18"></button>
+      </div></div>
+      <section id="content" class="content"></section>
+    </main>
+    <aside id="queue-panel" class="queue-panel" hidden aria-label="Cola de reproducción"></aside>
+
+    <footer class="player">
+      <div class="now-playing">
+        <img id="current-art" class="art poke" src="assets/salamence.png" alt="">
+        <div class="track-label"><strong id="current-title">Elige una canción</strong><span id="current-artist">Tu biblioteca te espera</span></div>
+        <button id="like-current" class="icon-btn heart" title="Añadir a favoritos" aria-label="Favorito"></button>
+      </div>
+      <div class="controls">
+        <div class="control-buttons">
+          <button id="shuffle" class="icon-btn" title="Aleatorio" aria-label="Aleatorio"></button>
+          <button id="previous" class="icon-btn" title="Anterior" aria-label="Anterior"></button>
+          <button id="play-pause" class="play-button" title="Reproducir (Espacio)" aria-label="Reproducir"></button>
+          <button id="next" class="icon-btn" title="Siguiente" aria-label="Siguiente"></button>
+          <button id="repeat" class="icon-btn" title="Repetir" aria-label="Repetir"></button>
+        </div>
+        <div class="timeline"><span id="elapsed">0:00</span><input id="seek" class="slider" type="range" min="0" max="1000" value="0" aria-label="Posición"><span id="duration">0:00</span></div>
+      </div>
+      <div class="right-controls">
+        <button id="queue-btn" class="icon-btn" title="Cola (Q)" aria-label="Cola" data-icon="queue" data-size="20"></button>
+        <button id="mute" class="icon-btn" title="Silenciar (M)" aria-label="Silenciar"></button>
+        <input id="volume" class="slider" type="range" min="0" max="1" step="0.01" value="0.8" aria-label="Volumen">
+      </div>
+      <audio id="audio" preload="auto"></audio>
+    </footer>
+  </div>
+
+  <section id="fullplayer" class="fullplayer" hidden aria-label="Reproduciendo">
+    <header class="fp-top"><button id="fp-close" class="icon-btn" aria-label="Cerrar" data-icon="chevDown" data-size="28"></button><span>Reproduciendo</span><button id="fp-queue" class="icon-btn" aria-label="Cola" data-icon="queue" data-size="22"></button></header>
+    <img id="fp-art" class="fp-art poke" src="assets/salamence.png" alt="">
+    <div class="fp-meta"><div class="fp-text"><strong id="fp-title">Elige una canción</strong><span id="fp-artist"></span></div><button id="fp-like" class="icon-btn" aria-label="Favorito"></button></div>
+    <div class="fp-seek"><input id="fp-seek" class="slider" type="range" min="0" max="1000" value="0" aria-label="Posición"><div class="fp-times"><span id="fp-elapsed">0:00</span><span id="fp-duration">0:00</span></div></div>
+    <div class="fp-controls"><button id="fp-shuffle" class="icon-btn" aria-label="Aleatorio"></button><button id="fp-prev" class="icon-btn" aria-label="Anterior"></button><button id="fp-play" class="play-button big" aria-label="Reproducir"></button><button id="fp-next" class="icon-btn" aria-label="Siguiente"></button><button id="fp-repeat" class="icon-btn" aria-label="Repetir"></button></div>
+  </section>
+
+  <div id="menu-back" class="menu-back" hidden></div>
+  <div id="menu" class="menu" role="menu" hidden></div>
+  <div id="toast" class="toast" role="status" hidden></div>
+  <div id="drop" class="drop" hidden><div id="drop-msg">Suelta aquí tus canciones o carpetas</div></div>
+  <div id="modal" class="modal" hidden>
+    <form id="modal-form" class="modal-card">
+      <h3 id="modal-title"></h3>
+      <p id="modal-msg"></p>
+      <input id="modal-input" type="text" autocomplete="off" maxlength="80">
+      <div class="modal-actions">
+        <button type="button" id="modal-cancel" class="ghost-button">Cancelar</button>
+        <button type="submit" id="modal-ok" class="primary-button">Aceptar</button>
+      </div>
+    </form>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

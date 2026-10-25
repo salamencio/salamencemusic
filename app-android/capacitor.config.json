@@ -1,0 +1,7 @@
+{
+  "appId": "com.salamence.music",
+  "appName": "Salamence music",
+  "webDir": "www",
+  "server": { "androidScheme": "https" },
+  "backgroundColor": "#0d1116"
+}

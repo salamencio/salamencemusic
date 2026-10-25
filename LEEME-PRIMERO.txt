@@ -1,0 +1,43 @@
+SALAMENCE MUSIC
+
+Tienes tres formas de usarlo, de la más rápida a la más "de verdad":
+
+1) PRUEBA RÁPIDA (sin instalar nada)
+   Extrae TODO el ZIP en una carpeta y abre index.html con Chrome o Edge.
+
+2) COMO APLICACIÓN, SIN INSTALAR NADA (solo Windows)
+   Doble clic en ABRIR-COMO-APP.bat. Se abre en su propia ventana, sin pestañas
+   ni barra del navegador. Usa el Edge/Chrome que ya tienes.
+
+3) INSTALADOR REAL DE WINDOWS (acceso directo, menú Inicio, desinstalador)
+   a) Instala Node.js (versión LTS) desde https://nodejs.org. Solo hace falta
+      para crear el instalador; luego puedes desinstalarlo.
+   b) Doble clic en CREAR-INSTALADOR.bat y espera unos minutos.
+   c) Se abrirá la carpeta "dist" con "Salamence music Setup 1.0.0.exe".
+      Ese es tu instalador: ejecútalo y se creará el acceso directo.
+   Puedes pasar ese .exe a otros ordenadores; no necesitan Node.js.
+
+ANDROID: lee ANDROID-LEEME.txt (instalar en el móvil y pasar tus listas del PC al móvil).
+
+CÓMO SE USA
+- "Añadir música" o "Añadir carpeta", o arrastra archivos/carpetas a la ventana.
+- Menú ⋯ (o clic derecho) en una canción > "Editar detalles": título, artista, álbum y portada.
+- Sección "Álbumes" > "Nuevo álbum". Sin portada, se usa un Pokémon al azar (gen. 1-3);
+  la primera vez necesita internet para descargarlo, después queda guardado.
+- Las canciones, listas, favoritos y la última canción se guardan en el equipo.
+- Selección: clic = seleccionar · Ctrl+clic = sumar · Mayús+clic = rango · Ctrl+A = todo ·
+  doble clic o Intro = reproducir · Esc = quitar selección.
+- Cola: botón del reproductor o tecla Q. Arrastra para reordenar lo que añadas.
+- Listas: arrastra las canciones para ordenarlas (menú «Ordenar por» > «Mi orden»); arrastra las listas de la barra
+  lateral o usa el botón ⇅ para ordenarlas; clic derecho en una lista = más opciones.
+- Listas: clic en la foto de la lista (o en el lápiz) para cambiar su nombre y su foto.
+- Copia de seguridad (icono de base de datos arriba): exportar/importar listas, favoritos y datos
+  en un archivo .salamence para pasarlos a otro dispositivo.
+- Listas: botón de copiar = duplicar; botón de lista con + = añadir esta lista a otra.
+  Con una lista abierta puedes arrastrar música a la ventana y entra a la lista y a la biblioteca.
+- Atajos: Espacio pausa/reproduce · Flechas izq/der avanzan 5 s ·
+  Mayús + flechas = anterior/siguiente · Flechas arriba/abajo volumen ·
+  M silencia · / abre la búsqueda · Clic derecho en una canción = menú.
+
+Si algo no abre: no muevas index.html fuera de su carpeta; deben estar juntos
+index.html, app.js, styles.css y la carpeta assets.

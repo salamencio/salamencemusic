@@ -1,0 +1,38 @@
+{
+  "name": "salamence-music",
+  "productName": "Salamence music",
+  "version": "1.1.1",
+  "description": "Reproductor de música local estilo Spotify, sin cuentas ni anuncios",
+  "main": "main.js",
+  "author": "Salamence music",
+  "license": "UNLICENSED",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win",
+    "dist:mac": "electron-builder --mac",
+    "dist:linux": "electron-builder --linux"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.salamence.music",
+    "productName": "Salamence music",
+    "directories": { "buildResources": "build", "output": "dist" },
+    "files": ["index.html", "app.js", "styles.css", "main.js", "assets/**/*", "build/icon.png", "package.json"],
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Salamence music"
+    },
+    "mac": { "target": "dmg", "category": "public.app-category.music", "icon": "build/icon.png" },
+    "linux": { "target": ["AppImage"], "category": "Audio", "icon": "build/icon.png" }
+  }
+}

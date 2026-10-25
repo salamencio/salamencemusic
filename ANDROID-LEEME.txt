@@ -1,0 +1,73 @@
+SALAMENCE MUSIC EN ANDROID
+
+Hay dos formas de tenerla en el móvil. La A es la más fácil y recomendada.
+
+============================================================
+A) INSTALARLA COMO APP DESDE EL NAVEGADOR (PWA)  [recomendada]
+============================================================
+Se instala con el icono de Salamence en el menú de aplicaciones, se abre a pantalla
+completa, funciona sin conexión y la música sigue sonando con la pantalla apagada, con
+los controles en la notificación y en la pantalla de bloqueo.
+
+Solo hace falta publicar la carpeta una vez (gratis) para que tenga una dirección https.
+Tu música y tus listas NO se suben a ningún sitio: se guardan en tu móvil.
+
+Opción 1 - GitHub Pages
+  1. Crea una cuenta en github.com y un repositorio nuevo, por ejemplo "salamence".
+  2. Sube TODO el contenido de esta carpeta (index.html, app.js, styles.css, sw.js,
+     manifest.webmanifest, assets...).
+  3. En el repositorio: Settings > Pages > Source: "Deploy from a branch" > main > Save.
+  4. En 1-2 minutos tendrás una dirección tipo https://tuusuario.github.io/salamence/
+
+Opción 2 - Netlify (arrastrar y soltar)
+  1. Crea una cuenta gratis en netlify.com y entra en "Add new site > Deploy manually".
+  2. Arrastra la carpeta entera. Te da una dirección https.
+
+En el móvil:
+  1. Abre esa dirección en Chrome.
+  2. Menú ⋮ > "Instalar aplicación" (o "Añadir a la pantalla de inicio").
+  3. Abre Salamence music desde el icono. Pulsa "Añadir música" y elige tus canciones.
+  Para actualizar la app más adelante, vuelve a subir los archivos nuevos: se actualiza sola.
+
+============================================================
+B) CREAR UN APK (instalador .apk)  [opcional, sin Android Studio]
+============================================================
+Esta vía no la he podido probar aquí. Usa GitHub para compilar el APK en la nube:
+  1. Sube el contenido de esta carpeta a un repositorio de GitHub (el archivo
+     ".github/workflows/android.yml" debe quedar en la raíz del repositorio).
+  2. Pestaña "Actions" > "Crear APK de Android" > "Run workflow".
+  3. Al terminar (unos 5-10 min), abre la ejecución y descarga "salamence-music-apk".
+     Dentro está app-debug.apk.
+  4. Pásalo al móvil e instálalo (Android pedirá permitir "instalar apps desconocidas").
+Aviso: en un APK la reproducción con la pantalla apagada puede cortarse en algunos móviles.
+Si te pasa, usa la opción A, que no tiene ese problema.
+
+============================================================
+PASAR TUS LISTAS DEL PC AL MÓVIL
+============================================================
+En el PC (app de escritorio):
+  1. Pulsa el icono de base de datos de la barra superior ("Copia de seguridad").
+  2. Elige "Listas, favoritos y datos" y pulsa Exportar. Se crea un archivo .salamence
+     (muy pequeño). Guárdalo donde quieras.
+  3. Envíatelo al móvil: Drive, WhatsApp, correo, cable USB, Nearby Share...
+En el móvil:
+  4. Copia tus canciones al móvil (carpeta Música o Descargas) si aún no las tienes.
+  5. En la app: icono de copia de seguridad > Importar > elige el archivo .salamence.
+  6. Pulsa "Añadir música" y selecciona las canciones. Se enlazan solas a sus listas,
+     con el mismo orden, favoritos, álbumes, portadas y fotos de las listas.
+     Si importas antes de tener las canciones, la app te avisa de cuáles faltan y las
+     engancha en cuanto las añadas.
+Opción alternativa: "Todo, con las canciones" mete también los audios en el archivo
+(puede ser enorme). Útil para colecciones pequeñas.
+Importar siempre combina con lo que ya tienes: nunca borra nada.
+
+============================================================
+ACTUALIZAR A UNA VERSIÓN NUEVA
+============================================================
+PC: ejecuta de nuevo CREAR-INSTALADOR.bat e instala el nuevo "Setup".
+    Tu biblioteca, listas y favoritos se conservan.
+Para comprobar qué versión tienes: icono de copia de seguridad (base de datos) > abajo del todo
+    aparece "versión X". La actual es la 1.1.1.
+Móvil (opción A): sube de nuevo los archivos a GitHub Pages/Netlify (sustituyendo los
+    antiguos). La próxima vez que abras la app con internet se actualiza sola; si no, ciérrala
+    del todo y vuelve a abrirla.
