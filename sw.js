@@ -1,6 +1,6 @@
 // Salamence music: permite usar la app sin conexión una vez instalada.
 // Primero intenta la red (para recibir actualizaciones) y, si no hay, usa la copia guardada.
-const CACHE = "salamence-music-v3";
+const CACHE = "salamence-music-v4";
 const SHELL = ["./", "index.html", "app.js", "styles.css", "manifest.webmanifest", "assets/salamence.png", "assets/icon-192.png", "assets/icon-512.png", "assets/icon-maskable-512.png"];
 
 self.addEventListener("install", (e) => {

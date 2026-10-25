@@ -1,7 +1,7 @@
 {
   "name": "salamence-music",
   "productName": "Salamence music",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "description": "Reproductor de música local estilo Spotify, sin cuentas ni anuncios",
   "main": "main.js",
   "author": "Salamence music",
@@ -19,10 +19,30 @@
   "build": {
     "appId": "com.salamence.music",
     "productName": "Salamence music",
-    "directories": { "buildResources": "build", "output": "dist" },
-    "files": ["index.html", "app.js", "styles.css", "main.js", "assets/**/*", "build/icon.png", "package.json"],
+    "directories": {
+      "buildResources": "build",
+      "output": "dist"
+    },
+    "files": [
+      "index.html",
+      "app.js",
+      "styles.css",
+      "main.js",
+      "assets/**/*",
+      "build/icon.png",
+      "package.json",
+      "sync-server.js",
+      "preload.js"
+    ],
     "win": {
-      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
       "icon": "build/icon.ico"
     },
     "nsis": {
@@ -32,7 +52,17 @@
       "createStartMenuShortcut": true,
       "shortcutName": "Salamence music"
     },
-    "mac": { "target": "dmg", "category": "public.app-category.music", "icon": "build/icon.png" },
-    "linux": { "target": ["AppImage"], "category": "Audio", "icon": "build/icon.png" }
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.music",
+      "icon": "build/icon.png"
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Audio",
+      "icon": "build/icon.png"
+    }
   }
 }

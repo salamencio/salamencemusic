@@ -4,7 +4,7 @@
   const audio = $("audio");
   const content = $("content");
   const LOGO = "assets/salamence.png";
-  const APP_VERSION = "1.1.1";
+  const APP_VERSION = "1.2.0";
   const AUDIO_RE = /\.(mp3|flac|wav|m4a|aac|ogg|oga|opus|wma|weba)$/i;
 
   /* ---------- utilidades ---------- */
@@ -64,6 +64,7 @@
     upload: ["s", "M12 15V3M7 8l5-5 5 5M5 21h14"],
     download: ["s", "M12 3v12M7 10l5 5 5-5M5 21h14"],
     copy: ["s", "M9 9h11v11H9zM5 15V5a1 1 0 0 1 1-1h10"],
+    phone: ["s", "M8 2h8a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zM12 18h.01"],
     clock: ["s", "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2"],
     list: ["s", "M4 6h12M4 11h12M4 16h7M17 14v6M14 17h6"]
   };
@@ -128,7 +129,7 @@
   let importing = false;
 
   const saveSettings = () => LS.set("salamence-settings", settings);
-  const savePlaylists = () => LS.set("salamence-playlists", playlists);
+  const savePlaylists = () => { LS.set("salamence-playlists", playlists); renderNowCard(); };
   const saveLiked = () => LS.set("salamence-liked", [...liked]);
   const getPlaylist = (id) => playlists.find((p) => p.id === id);
   const playlistTracks = (p) => p.ids.map((id) => tmap.get(id)).filter(Boolean);
@@ -921,20 +922,41 @@
   function toggleQueue(force) {
     const p = $("queue-panel"), open = typeof force === "boolean" ? force : p.hidden;
     p.hidden = !open;
+    if (!isMobile()) { settings.panel = open; saveSettings(); }
     document.querySelector(".app").classList.toggle("queue-open", open);
     $("queue-btn").classList.toggle("active", open);
     if (open) renderQueue();
   }
+  function renderNowCard() {
+    const p = $("queue-panel"); if (p.hidden) return;
+    const box = $("np-card"), t = tmap.get(curId);
+    const top = `<div class="np-top"><b>Reproduciendo ahora</b><button class="icon-btn sm" data-q="close" title="Ocultar panel (Q)" aria-label="Ocultar panel">${icon("x", 18)}</button></div>`;
+    if (!t) { box.innerHTML = `${top}<img class="np-art poke" src="${LOGO}" alt=""><p class="np-empty">Elige una canción y aquí verás su portada, sus detalles y lo que viene después.</p>`; return; }
+    const on = liked.has(t.id), ext = (t.name.split(".").pop() || "").toUpperCase();
+    const inLists = playlists.filter((pl) => pl.ids.includes(t.id));
+    const same = t.artist ? tracks.filter((x) => x.artist === t.artist) : [];
+    const more = same.filter((x) => x.id !== t.id).slice(0, 4);
+    const nextId = userQueue.length ? userQueue[0] : order[ctxPos + 1], nx = nextId ? tmap.get(nextId) : null;
+    const row = (k, v) => (v ? `<div><dt>${k}</dt><dd>${v}</dd></div>` : "");
+    const small = (m) => `<button class="np-song" data-act="np-play" data-id="${m.id}">${coverImg(m, "q-thumb")}<span class="q-meta"><b>${esc(m.title)}</b><small>${fmt(m.duration)}</small></span></button>`;
+    box.innerHTML = `${top}${coverImg(t, "np-art")}
+      <div class="np-title"><div class="np-names"><h3>${esc(t.title)}</h3>${t.artist ? `<button class="np-link" data-act="np-artist" data-id="${t.id}">${esc(t.artist)}</button>` : '<span class="np-sub">Artista desconocido</span>'}</div><button class="icon-btn sm${on ? " on" : ""}" data-act="like" data-id="${t.id}" title="Favorito" aria-label="Favorito">${icon("heart", 22, on)}</button></div>
+      <dl class="np-info">${t.album ? row("Álbum", `<button class="np-link" data-act="open-album" data-id="${esc(albumKey(t.album))}">${esc(t.album)}</button>`) : ""}${row("Pista", t.track ? "n.º " + t.track : "")}${row("Duración", fmt(t.duration))}${row("Formato", `${esc(ext)} · ${fmtSize(t.size)}`)}${row("Añadida", new Date(t.added).toLocaleDateString("es", { day: "numeric", month: "long", year: "numeric" }))}</dl>
+      ${inLists.length ? `<div class="np-lists"><small>En tus listas</small><div>${inLists.map((pl) => `<button class="chip" data-act="open-pl" data-id="${esc(pl.id)}">${esc(pl.name)}</button>`).join("")}</div></div>` : ""}
+      ${t.artist ? `<div class="np-about"><small>Acerca del artista</small><b>${esc(t.artist)}</b><span>${plural(same.length, "canción", "canciones")} en tu biblioteca · ${fmtTotal(same.reduce((a, x) => a + x.duration, 0))}</span>${more.map(small).join("")}</div>` : ""}
+      ${nx ? `<div class="np-next"><small>Siguiente</small><button class="np-song" data-act="np-next">${coverImg(nx, "q-thumb")}<span class="q-meta"><b>${esc(nx.title)}</b><small>${esc(nx.artist || "Artista desconocido")}</small></span></button></div>` : ""}`;
+  }
   function renderQueue() {
     const p = $("queue-panel"); if (p.hidden) return;
+    renderNowCard();
     const item = (id, i, kind) => {
       const t = tmap.get(id); if (!t) return "";
       return `<div class="q-item${kind === "now" ? " now" : ""}" data-kind="${kind}" data-i="${i}" data-id="${id}"${kind === "user" ? ' draggable="true"' : ""}>${coverImg(t, "q-thumb")}<div class="q-meta"><b>${esc(t.title)}</b><small>${esc(t.artist || "Artista desconocido")}</small></div>${kind === "user" ? `<button class="icon-btn sm" data-q="remove" data-i="${i}" title="Quitar de la cola" aria-label="Quitar de la cola">${icon("x", 16)}</button>` : ""}</div>`;
     };
     const upcoming = order.slice(ctxPos + 1).filter((id) => tmap.has(id));
     const shown = upcoming.slice(0, 150);
-    p.innerHTML = `<div class="q-head"><h2>Cola</h2><div class="q-head-btns"><button class="ghost-button sm" data-q="add"><span class="ic">${icon("plus", 16)}</span>Añadir</button><button class="icon-btn sm" data-q="close" title="Cerrar" aria-label="Cerrar">${icon("x", 18)}</button></div></div>
-      <div class="q-body"><h3>Reproduciendo ahora</h3>${curId ? item(curId, 0, "now") : '<p class="q-empty">No hay nada sonando.</p>'}
+    $("q-rest").innerHTML = `<div class="q-head"><h2>Cola</h2><div class="q-head-btns"><button class="ghost-button sm" data-q="add"><span class="ic">${icon("plus", 16)}</span>Añadir</button><button class="icon-btn sm" data-q="close" title="Cerrar" aria-label="Cerrar">${icon("x", 18)}</button></div></div>
+      <div class="q-body"><div class="q-now-sec"><h3>Reproduciendo ahora</h3>${curId ? item(curId, 0, "now") : '<p class="q-empty">No hay nada sonando.</p>'}</div>
       <h3>Siguiente en la cola${userQueue.length ? '<button data-q="clear">Vaciar</button>' : ""}</h3>${userQueue.length ? userQueue.map((id, i) => item(id, i, "user")).join("") : '<p class="q-empty">Vacía. Usa «Añadir a la cola» en cualquier canción, o el botón Añadir. Puedes arrastrar para reordenar.</p>'}
       <h3>${settings.shuffle ? "A continuación (aleatorio)" : "A continuación"}</h3>${shown.length ? shown.map((id, i) => item(id, i, "order")).join("") + (upcoming.length > shown.length ? `<p class="q-empty">…y ${upcoming.length - shown.length} más</p>` : "") : `<p class="q-empty">${settings.repeat === "all" ? "Al terminar vuelve a empezar." : "No quedan canciones después de esta."}</p>`}</div>`;
   }
@@ -989,7 +1011,7 @@
   function updateLikeCurrent() {
     const on = !!curId && liked.has(curId), b = $("like-current");
     b.classList.toggle("on", on); b.innerHTML = icon("heart", 20, on);
-    syncFull();
+    renderNowCard(); syncFull();
   }
   function markPlaying() { document.querySelectorAll("tr[data-id]").forEach((r) => r.classList.toggle("playing", r.dataset.id === curId)); }
   function setCurrentUI() {
@@ -1198,6 +1220,9 @@
         case "like": toggleLike(id); break;
         case "menu": menuFor(id, el); break;
         case "import": importTarget = null; $("file-picker").click(); break;
+        case "np-artist": { const t = tmap.get(id); if (t && t.artist) { query = t.artist; navigate({ name: "search", id: null }); } break; }
+        case "np-play": { const t = tmap.get(id); if (t) playTrack(id, tracks.filter((x) => x.artist === t.artist).map((x) => x.id)); break; }
+        case "np-next": next(false); break;
         case "pl-menu": openPlaylistMenu(id, el); break;
         case "pl-dup": { const p = getPlaylist(view.id); if (p) duplicatePlaylist(p); break; }
         case "pl-into": { const p = getPlaylist(view.id); if (p) pickTargetPlaylist(sortPl(playlistTracks(p), p.sort || "custom").map((t) => t.id), el, { excludeId: p.id, title: `Añadir «${p.name}» a…` }); break; }
@@ -1520,11 +1545,91 @@
         body.querySelector("#bk-import").onclick = () => body.querySelector("#bk-file").click();
         body.querySelector("#bk-file").onchange = async (ev) => { const f = ev.target.files[0]; ev.target.value = ""; if (!f) return; const apply = body.querySelector("#bk-meta").checked; close(); await importBackup(f, { applyMeta: apply }); };
         const miss = body.querySelector("#bk-missing"); if (miss) miss.onclick = () => { close(); showMissing(); };
+        if (native) { const sb = document.createElement("button"); sb.type = "button"; sb.className = "ghost-button"; sb.textContent = "Sincronizar con el móvil por cable…"; sb.onclick = () => { close(); syncSheet(); }; body.appendChild(sb); }
         return () => true;
       }
     });
   }
   $("backup-btn").onclick = backupSheet;
+
+  /* ---------- sincronizar con el móvil por cable USB (solo app de escritorio) ---------- */
+  const native = window.salamenceNative || null;
+  let syncState = { running: false, port: 0, pin: "", addresses: [] };
+  const syncLog = [];
+  function logSync(msg) {
+    syncLog.unshift(new Date().toLocaleTimeString("es") + " · " + msg); syncLog.length = Math.min(syncLog.length, 12);
+    const el = document.getElementById("sync-log"); if (el) el.textContent = syncLog.join("\n");
+  }
+  const SYNC_CHUNK = 2 * 1024 * 1024;
+  const guessMime = (name) => ({ mp3: "audio/mpeg", flac: "audio/flac", wav: "audio/wav", m4a: "audio/mp4", aac: "audio/aac", ogg: "audio/ogg", opus: "audio/ogg" }[name.split(".").pop().toLowerCase()] || "");
+  let ingestQueue = Promise.resolve();
+  // Responde a lo que pide el servidor de sincronización (el móvil descarga o envía cosas)
+  async function syncHandle(type, p) {
+    if (type === "info") return { tracks: tracks.length, playlists: playlists.length, liked: liked.size, bytes: tracks.reduce((a, t) => a + t.size, 0), version: APP_VERSION };
+    if (type === "tracks") return tracks.map((t) => ({ key: trackKey(t), name: t.name, size: t.size, title: t.title, artist: t.artist })).sort((a, b) => a.name.localeCompare(b.name, "es"));
+    if (type === "backup") return new Uint8Array(await (await buildBackup(false)).arrayBuffer());
+    if (type === "file") {
+      const t = tracks.find((x) => trackKey(x) === p.key);
+      if (!t) throw new Error("Canción no encontrada");
+      return new Uint8Array(await t.file.slice(p.start, p.end).arrayBuffer());
+    }
+    if (type === "incoming") {
+      const parts = [];
+      for (let off = 0; off < p.size; off += SYNC_CHUNK) parts.push(await native.readTemp(p.id, off, Math.min(SYNC_CHUNK, p.size - off)));
+      const file = new File(parts, p.name, { type: guessMime(p.name) });
+      const job = ingestQueue.then(async () => { if (/\.salamence$/i.test(p.name)) await importBackup(file, { applyMeta: true }); else await importFiles([file]); });
+      ingestQueue = job.catch(() => {});
+      await job;
+      return { ok: true };
+    }
+    throw new Error("Petición desconocida: " + type);
+  }
+  async function syncSheet() {
+    if (!native) { toast("La sincronización por cable necesita la app de escritorio (el instalador). No está en la versión del navegador.", 6500); return; }
+    try { Object.assign(syncState, await native.syncStatus()); } catch { /* sin estado previo */ }
+    await sheet({
+      title: "Sincronizar con el móvil", confirm: "Cerrar",
+      mount(body) {
+        const paint = () => {
+          if (!syncState.running) {
+            body.innerHTML = `<p>Pasa tus listas y canciones entre el PC y el móvil usando el cable USB.</p>
+              <ol class="sync-steps"><li>Conecta el móvil al PC con el cable.</li><li>En el móvil activa <b>Compartir conexión por USB</b> (Ajustes &gt; Conexiones &gt; Punto de acceso y compartir conexión).</li><li>Pulsa <b>Activar sincronización</b> aquí.</li><li>En el móvil abre Chrome, escribe la dirección que aparecerá e introduce el PIN.</li></ol>
+              <p class="sync-note">Si Windows pregunta por el cortafuegos, permite el acceso también en redes públicas. Funciona igual por Wi-Fi si los dos están en la misma red.</p>
+              <button type="button" class="primary-button" id="sync-start">Activar sincronización</button>`;
+            body.querySelector("#sync-start").onclick = async (ev) => {
+              ev.currentTarget.disabled = true;
+              try { syncState = Object.assign({}, syncState, await native.syncStart({ port: 8787 }), { running: true }); logSync("Sincronización activada"); }
+              catch (err) { toast("No se pudo activar la sincronización: " + ((err && err.message) || err), 7000); }
+              paint();
+            };
+          } else {
+            const addrs = (syncState.addresses || []).map((a) => { const u = `http://${a.address}:${syncState.port}`; return `<div class="sync-addr"><div><b>${esc(u)}</b><small>${esc(a.hint)}</small></div><button type="button" class="ghost-button sm" data-copy="${esc(u)}">Copiar</button></div>`; }).join("")
+              || '<p class="sync-note">No encuentro ninguna red. Comprueba que el cable está conectado y que «Compartir conexión por USB» está activado en el móvil.</p>';
+            body.innerHTML = `<p>En el móvil abre Chrome y escribe una de estas direcciones:</p>${addrs}
+              <div class="sync-pin"><small>PIN</small><b>${esc(syncState.pin)}</b></div>
+              <p class="sync-note">Desde esa página descargas tus listas y canciones, o envías las del móvil al PC. Para terminar, impórtalas en la app del móvil.</p>
+              <pre id="sync-log" class="sync-log">${esc(syncLog.join("\n"))}</pre>
+              <button type="button" class="ghost-button" id="sync-stop">Detener sincronización</button>`;
+            body.querySelectorAll("[data-copy]").forEach((b) => { b.onclick = () => { if (navigator.clipboard) navigator.clipboard.writeText(b.dataset.copy).then(() => toast("Dirección copiada")).catch(() => {}); }; });
+            body.querySelector("#sync-stop").onclick = async () => { try { await native.syncStop(); } catch { /* nada */ } syncState.running = false; logSync("Sincronización detenida"); paint(); };
+          }
+        };
+        paint();
+        return () => true;
+      }
+    });
+  }
+  if (native) {
+    native.onAsk(async ({ id, type, params }) => {
+      try { native.answer(id, await syncHandle(type, params || {})); }
+      catch (err) { native.answer(id, null, String((err && err.message) || err)); }
+    });
+    native.onEvent((ev) => {
+      if (ev.type === "connected") { logSync("Móvil conectado desde " + ev.ip); toast("Móvil conectado a la sincronización", 4000); }
+      else if (ev.type === "received") logSync("Recibido: " + ev.name + " (" + fmtSize(ev.size) + ")");
+    });
+    $("sync-btn").hidden = false; $("sync-btn").onclick = syncSheet;
+  }
 
   /* ---------- reproductor a pantalla completa y navegación (móvil) ---------- */
   const fp = $("fullplayer");
@@ -1660,6 +1765,7 @@
   const refreshGreeting = () => { const g = $("greeting"); if (g) g.textContent = greeting(); };
   setInterval(refreshGreeting, 30000);
   document.addEventListener("visibilitychange", refreshGreeting);
+  if (!isMobile() && matchMedia("(min-width: 1000px)").matches && settings.panel !== false) toggleQueue(true);
   if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) {
     const hadSW = !!navigator.serviceWorker.controller;
     navigator.serviceWorker.register("sw.js").catch(() => {});

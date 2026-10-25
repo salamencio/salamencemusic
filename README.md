@@ -1,4 +1,4 @@
-# Salamence music  (versión 1.1.1)
+# Salamence music  (versión 1.2.0)
 
 Reproductor de música local con interfaz oscura estilo streaming. Sin cuentas, sin anuncios, sin conexión.
 
@@ -20,13 +20,15 @@ Reproductor de música local con interfaz oscura estilo streaming. Sin cuentas, 
 - Arrastrar elementos de la propia app (fotos, filas, listas, cola) nunca se interpreta como importar música.
 - **Duplicar listas y combinarlas**: en una lista, el botón de copiar crea una copia (con su foto) y el de «lista con +» añade todas sus canciones a otra lista, o a una nueva. También con clic derecho (o pulsación larga en el móvil) sobre la lista. Los álbumes tienen el mismo botón para pasarlos a una lista.
 - **Arrastrar música a una lista**: con una lista abierta, suelta archivos o carpetas y entran a la lista y a la biblioteca (si ya estaban en la biblioteca, solo se añaden a la lista). El botón «Añadir música» dentro de la lista hace lo mismo, también en el móvil.
+- **Panel derecho (PC)**: siempre visible en pantallas anchas. Arriba la canción que suena (portada grande, título, artista, álbum, duración, formato y tamaño, en qué listas está, más canciones del artista y la siguiente) y abajo la cola. Se oculta con la tecla Q o la ✕ y recuerda tu elección.
+- **Sincronizar con el móvil por cable USB** (solo escritorio): servidor local con PIN que sirve listas, canciones (ZIP) y recibe lo del móvil. Ver `SINCRONIZAR-POR-CABLE.txt`.
 - **Copia de seguridad** (icono de base de datos de la barra superior): exporta a un archivo `.salamence` las listas (con su orden y foto), favoritos, álbumes, títulos/artistas editados y portadas propias, o todo con los audios. Importar combina con lo que ya hay. Si faltan canciones en el dispositivo, quedan "pendientes" y se enlazan solas a sus listas al añadirlas (coincidencia por nombre de archivo y tamaño).
 - **Android**: se instala como app desde el navegador (PWA, con service worker y manifiesto) o, de forma opcional, como APK compilado con Capacitor y GitHub Actions (`app-android/` y `.github/workflows/android.yml`). Ver `ANDROID-LEEME.txt`. En pantallas pequeñas hay barra inferior, mini reproductor, reproductor a pantalla completa, vista «Listas», selección táctil (menú ⋯ > «Seleccionar varias») y el botón Atrás de Android.
 - Atajos de teclado (ver LEEME-PRIMERO.txt).
 
 ## Estructura
 - `index.html`, `app.js`, `styles.css`, `assets/` — la aplicación (funciona abriendo index.html).
-- `main.js`, `package.json`, `build/` — envoltorio de escritorio con Electron.
+- `main.js`, `preload.js`, `sync-server.js`, `package.json`, `build/` — envoltorio de escritorio con Electron y servidor de sincronización.
 - `manifest.webmanifest`, `sw.js` — instalación como app (PWA) y uso sin conexión.
 - `app-android/`, `.github/workflows/android.yml` — empaquetado opcional como APK.
 - `CREAR-INSTALADOR.bat` — genera el instalador `.exe` (NSIS) en `dist/`.
@@ -50,3 +52,7 @@ npm run dist:linux # AppImage (en Linux)
 - En pantallas táctiles los menús aparecen como panel inferior y no se cierran solos al redimensionar/desplazar.
 - Las listas tienen botones con texto (Duplicar, Añadir a otra lista) y botón ⋯ en cada tarjeta de la vista «Listas».
 - La app instalada (PWA) se actualiza de forma fiable y muestra su versión en «Copia de seguridad».
+
+## Novedades 1.2.0
+- Panel derecho fijo con la canción actual y la cola.
+- Sincronización con el móvil por cable USB (compartir conexión por USB) o Wi-Fi, con PIN.

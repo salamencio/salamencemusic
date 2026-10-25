@@ -1,0 +1,41 @@
+SINCRONIZAR EL MÓVIL CON EL PC POR CABLE USB   (versión 1.2.0, solo app de escritorio)
+
+LO QUE PUEDE Y NO PUEDE HACER
+- Un programa de ordenador NO puede leer el almacenamiento del móvil por USB como si fuera un disco
+  (Android lo expone con un protocolo, MTP, al que las apps web no tienen acceso).
+- Lo que sí hace Salamence music: usa la red que crea tu móvil con "Compartir conexión por USB".
+  Por ese cable el PC y el móvil se ven entre sí, y la app del PC sirve tus listas y canciones al móvil.
+  También funciona por Wi-Fi si los dos están en la misma red.
+- La página del móvil NO se conecta sola a la app instalada del móvil: descargas los archivos y los
+  importas allí (2 toques). Es así porque el navegador del móvil no deja que una app https hable con
+  un PC por http.
+
+PASO A PASO
+1. Conecta el móvil al PC con el cable.
+2. En el móvil: Ajustes > Conexiones (o Redes e Internet) > Punto de acceso y compartir conexión >
+   activa "Compartir conexión por USB" (anclaje USB).
+3. En Salamence music del PC: pulsa el icono del móvil de la barra superior > "Activar sincronización".
+   Aparecen una o varias direcciones (la del cable USB suele empezar por 192.168.42.) y un PIN de 6 cifras.
+   Si Windows pregunta por el cortafuegos, permite el acceso también en redes públicas.
+4. En el móvil abre Chrome, escribe esa dirección (por ejemplo http://192.168.42.100:8787) e introduce el PIN.
+5. En esa página:
+   - "Descargar mis listas y favoritos": un archivo .salamence pequeño con tus listas, orden, favoritos,
+     álbumes, títulos/artistas y fotos.
+   - "Descargar todas las canciones (ZIP)": todas tus canciones en un ZIP. Descomprímelo con la app
+     Archivos del móvil. También puedes bajarlas una a una.
+   - "Del móvil al PC": elige canciones o una copia .salamence creada en el móvil y pulsa "Enviar al PC".
+     Entran solas en tu biblioteca del PC.
+6. En la app del móvil: icono de copia de seguridad > Importar > elige el .salamence descargado, y después
+   "Añadir música" y elige las canciones. Se enlazan solas a sus listas con el mismo orden.
+7. Al terminar, pulsa "Detener sincronización" en el PC.
+
+SEGURIDAD
+- Solo funciona mientras la sincronización está activada y se necesita el PIN (cambia cada vez).
+  Tras 5 PIN erróneos se bloquea un minuto. Úsala solo en redes de confianza.
+- La conexión es http (sin cifrar) porque va por el cable/red local.
+
+NOTAS
+- La sincronización solo existe en la app de escritorio (instalador). En el navegador no está.
+- Probado: el servidor, el ZIP (también con ZIP64), las descargas con reanudación, las subidas, el PIN y la
+  importación en la app del móvil, con un servidor real y un móvil simulado. No he podido probarlo con
+  Windows, Electron ni un móvil real, así que es posible que haga falta algún ajuste (sobre todo el cortafuegos).
