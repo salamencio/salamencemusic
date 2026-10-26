@@ -1,7 +1,7 @@
 {
   "name": "salamence-music",
   "productName": "Salamence music",
-  "version": "1.2.0",
+  "version": "1.4.1",
   "description": "Reproductor de música local estilo Spotify, sin cuentas ni anuncios",
   "main": "main.js",
   "author": "Salamence music",
@@ -31,7 +31,6 @@
       "assets/**/*",
       "build/icon.png",
       "package.json",
-      "sync-server.js",
       "preload.js"
     ],
     "win": {

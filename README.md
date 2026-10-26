@@ -1,4 +1,4 @@
-# Salamence music  (versión 1.2.0)
+# Salamence music  (versión 1.4.1)
 
 Reproductor de música local con interfaz oscura estilo streaming. Sin cuentas, sin anuncios, sin conexión.
 
@@ -20,15 +20,14 @@ Reproductor de música local con interfaz oscura estilo streaming. Sin cuentas, 
 - Arrastrar elementos de la propia app (fotos, filas, listas, cola) nunca se interpreta como importar música.
 - **Duplicar listas y combinarlas**: en una lista, el botón de copiar crea una copia (con su foto) y el de «lista con +» añade todas sus canciones a otra lista, o a una nueva. También con clic derecho (o pulsación larga en el móvil) sobre la lista. Los álbumes tienen el mismo botón para pasarlos a una lista.
 - **Arrastrar música a una lista**: con una lista abierta, suelta archivos o carpetas y entran a la lista y a la biblioteca (si ya estaban en la biblioteca, solo se añaden a la lista). El botón «Añadir música» dentro de la lista hace lo mismo, también en el móvil.
-- **Panel derecho (PC)**: siempre visible en pantallas anchas. Arriba la canción que suena (portada grande, título, artista, álbum, duración, formato y tamaño, en qué listas está, más canciones del artista y la siguiente) y abajo la cola. Se oculta con la tecla Q o la ✕ y recuerda tu elección.
-- **Sincronizar con el móvil por cable USB** (solo escritorio): servidor local con PIN que sirve listas, canciones (ZIP) y recibe lo del móvil. Ver `SINCRONIZAR-POR-CABLE.txt`.
+- **Panel derecho (PC)**: siempre visible en pantallas anchas. Arriba la canción que suena (portada grande, título, artista y álbum, en qué listas está, más canciones del artista y la siguiente; sin nombre de archivo ni tamaño) y abajo la cola. Se oculta con la tecla Q o la ✕ y recuerda tu elección.
 - **Copia de seguridad** (icono de base de datos de la barra superior): exporta a un archivo `.salamence` las listas (con su orden y foto), favoritos, álbumes, títulos/artistas editados y portadas propias, o todo con los audios. Importar combina con lo que ya hay. Si faltan canciones en el dispositivo, quedan "pendientes" y se enlazan solas a sus listas al añadirlas (coincidencia por nombre de archivo y tamaño).
 - **Android**: se instala como app desde el navegador (PWA, con service worker y manifiesto) o, de forma opcional, como APK compilado con Capacitor y GitHub Actions (`app-android/` y `.github/workflows/android.yml`). Ver `ANDROID-LEEME.txt`. En pantallas pequeñas hay barra inferior, mini reproductor, reproductor a pantalla completa, vista «Listas», selección táctil (menú ⋯ > «Seleccionar varias») y el botón Atrás de Android.
 - Atajos de teclado (ver LEEME-PRIMERO.txt).
 
 ## Estructura
 - `index.html`, `app.js`, `styles.css`, `assets/` — la aplicación (funciona abriendo index.html).
-- `main.js`, `preload.js`, `sync-server.js`, `package.json`, `build/` — envoltorio de escritorio con Electron y servidor de sincronización.
+- `main.js`, `preload.js`, `package.json`, `build/` — envoltorio de escritorio con Electron.
 - `manifest.webmanifest`, `sw.js` — instalación como app (PWA) y uso sin conexión.
 - `app-android/`, `.github/workflows/android.yml` — empaquetado opcional como APK.
 - `CREAR-INSTALADOR.bat` — genera el instalador `.exe` (NSIS) en `dist/`.
@@ -53,6 +52,18 @@ npm run dist:linux # AppImage (en Linux)
 - Las listas tienen botones con texto (Duplicar, Añadir a otra lista) y botón ⋯ en cada tarjeta de la vista «Listas».
 - La app instalada (PWA) se actualiza de forma fiable y muestra su versión en «Copia de seguridad».
 
-## Novedades 1.2.0
-- Panel derecho fijo con la canción actual y la cola.
-- Sincronización con el móvil por cable USB (compartir conexión por USB) o Wi-Fi, con PIN.
+## Novedades 1.3.0
+- Se mantiene el panel derecho (canción actual arriba y cola abajo). Se quita la sincronización por cable USB.
+- **Barajar de nuevo**: botón junto al aleatorio (aparece con el aleatorio activado), en la cola y en el reproductor grande del móvil; vuelve a repartir al azar lo que queda por sonar.
+- **Móvil**: en el reproductor grande, desliza la portada a la izquierda para ir a la siguiente canción o a la derecha para volver a la anterior.
+
+## Novedades 1.3.1
+- **Buscar en el móvil**: ya no abre el teclado solo; sale al tocar la barra (en el PC sigue enfocada).
+- **Añadir canciones a una lista**: botón «Añadir canciones» en cada lista (y en el menú de la lista). Muestra tu biblioteca con un botón + en cada canción para ir añadiéndolas; vuelve a pulsarlo para quitarla. Tiene buscador. «Importar archivos» sigue sirviendo para traer música nueva del equipo.
+
+## Novedades 1.4.0
+- **Cuánto ocupa tu música**: en Inicio y en Tu biblioteca; la hoja «Almacenamiento y carpeta» desglosa por formato, las canciones que más ocupan y el espacio que usa la app.
+- **Ir a la carpeta de tu música** (app de escritorio): la app recuerda la ruta original de cada archivo que importas. Botón «Abrir» por carpeta, «Mostrar en la carpeta» en cada canción y acceso a la carpeta de datos de la app. Para canciones importadas antes, «Añadir carpeta» sobre la misma carpeta aprende las rutas sin duplicar. En el navegador/móvil no hay carpeta que abrir (se explica en la hoja).
+
+## Novedades 1.4.1
+- El panel derecho muestra solo canción, artista y álbum (se quitan formato, tamaño, duración, fecha y ubicación). «Mostrar en la carpeta» sigue en el menú ⋯ de cada canción.

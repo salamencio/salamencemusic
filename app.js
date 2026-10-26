@@ -4,7 +4,8 @@
   const audio = $("audio");
   const content = $("content");
   const LOGO = "assets/salamence.png";
-  const APP_VERSION = "1.2.0";
+  const APP_VERSION = "1.4.1";
+  const native = window.salamenceNative || null;   // solo existe en la app de escritorio
   const AUDIO_RE = /\.(mp3|flac|wav|m4a|aac|ogg|oga|opus|wma|weba)$/i;
 
   /* ---------- utilidades ---------- */
@@ -14,7 +15,8 @@
   const fmtTotal = (s) => { if (s < 60) return `${Math.round(s)} s`; const m = Math.round(s / 60); return m >= 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m} min`; };
   const norm = (s) => String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   const titleFromFile = (name) => name.replace(/\.[^.]+$/, "").replace(/[_]+/g, " ").trim();
-  const fmtSize = (b) => b >= 1e9 ? (b / 1e9).toFixed(1) + " GB" : b >= 1e6 ? Math.round(b / 1e6) + " MB" : Math.max(1, Math.round(b / 1e3)) + " KB";
+  const nfmt = (n, d) => n.toLocaleString("es", { minimumFractionDigits: 0, maximumFractionDigits: d });
+  const fmtSize = (b) => b >= 1e12 ? nfmt(b / 1e12, 2) + " TB" : b >= 1e9 ? nfmt(b / 1e9, 2) + " GB" : b >= 1e6 ? nfmt(b / 1e6, 1) + " MB" : Math.max(1, Math.round(b / 1e3)) + " KB";
   const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
   const LS = {
     get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
@@ -64,7 +66,7 @@
     upload: ["s", "M12 15V3M7 8l5-5 5 5M5 21h14"],
     download: ["s", "M12 3v12M7 10l5 5 5-5M5 21h14"],
     copy: ["s", "M9 9h11v11H9zM5 15V5a1 1 0 0 1 1-1h10"],
-    phone: ["s", "M8 2h8a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zM12 18h.01"],
+    refresh: ["s", "M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5"],
     clock: ["s", "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2"],
     list: ["s", "M4 6h12M4 11h12M4 16h7M17 14v6M14 17h6"]
   };
@@ -143,7 +145,7 @@
     return l;
   };
 
-  const recOf = (t) => ({ id: t.id, name: t.name, size: t.size, title: t.title, artist: t.artist, album: t.album, track: t.track || 0, duration: t.duration, added: t.added, file: t.file, cover: t.cover || null, pokeId: t.pokeId || 0, customCover: !!t.customCover });
+  const recOf = (t) => ({ id: t.id, name: t.name, size: t.size, title: t.title, artist: t.artist, album: t.album, track: t.track || 0, duration: t.duration, added: t.added, file: t.file, cover: t.cover || null, pokeId: t.pokeId || 0, customCover: !!t.customCover, path: t.path || "" });
   const persist = (t) => DB.put(recOf(t)).catch((e) => console.error(e));
   const albumKey = (n) => norm(n).trim();
   function coverOf(t) {
@@ -358,6 +360,7 @@
   }
 
   /* ---------- importar música ---------- */
+  const getPath = (f) => { try { return (native && native.pathOf && native.pathOf(f)) || ""; } catch { return ""; } };
   async function importFiles(fileList, over = {}) {
     const files = [...fileList].filter((f) => f.type.startsWith("audio/") || AUDIO_RE.test(f.name));
     if (!files.length && [...fileList].length && [...fileList].every((f) => f.type.startsWith("image/"))) { toast("Eso es una imagen, no música. Para cambiar una portada usa «Editar detalles».", 4500); return []; }
@@ -365,18 +368,23 @@
     if (importing) { toast("Ya hay una importación en curso"); return []; }
     importing = true;
     const known = new Map(tracks.map((t) => [t.name + "|" + t.size, t.id])), allIds = [];
-    let added = 0, dup = 0, failed = 0, linked = 0; const newIds = [];
+    let added = 0, dup = 0, failed = 0, linked = 0, learned = 0; const newIds = [];
     for (let i = 0; i < files.length; i++) {
       const f = files[i];
       toast(`Importando ${i + 1} de ${files.length}…`, 0);
-      if (known.has(f.name + "|" + f.size)) { dup++; allIds.push(known.get(f.name + "|" + f.size)); continue; }
+      if (known.has(f.name + "|" + f.size)) {
+        dup++; allIds.push(known.get(f.name + "|" + f.size));
+        const ex = tmap.get(known.get(f.name + "|" + f.size)), pth = getPath(f);   // si ya la tenías pero sin ruta, aprende dónde está
+        if (ex && pth && ex.path !== pth) { ex.path = pth; persist(ex); learned++; }
+        continue;
+      }
       try {
         const tags = await readTags(f).catch(() => ({}));
         const duration = await probeDuration(f);
         const album = over.album !== undefined ? over.album : (tags.album || "");
         const cover = over.cover || tags.cover || null;
         const pokeId = cover ? 0 : (over.pokeId || (album ? hashPoke(album) : randPoke()));
-        const rec = { id: uid(), name: f.name, size: f.size, title: tags.title || titleFromFile(f.name), artist: over.artist || tags.artist || "", album, track: tags.track || 0, duration, added: Date.now() + i, file: f, cover, pokeId };
+        const rec = { id: uid(), name: f.name, size: f.size, title: tags.title || titleFromFile(f.name), artist: over.artist || tags.artist || "", album, track: tags.track || 0, duration, added: Date.now() + i, file: f, cover, pokeId, path: getPath(f) };
         await DB.put(rec);
         const nt = addTrack(rec); if (resolvePendingFor(nt)) linked++; known.set(f.name + "|" + f.size, rec.id); added++; newIds.push(rec.id); allIds.push(rec.id);
       } catch (err) { failed++; console.error(err); }
@@ -385,7 +393,7 @@
     const pl = over.playlistId ? getPlaylist(over.playlistId) : null; let inList = 0;
     if (pl) { for (const id of allIds) if (!pl.ids.includes(id)) { pl.ids.push(id); inList++; } savePlaylists(); renderSidebar(); }
     render(); cachePokes();
-    toast([added ? `Añadidas ${plural(added, "canción", "canciones")}` : (inList ? "" : "No se añadió ninguna canción"), inList ? `${plural(inList, "canción", "canciones")} en «${pl.name}»` : "", dup ? `${dup} ya estaban en la biblioteca` : "", failed ? `${failed} con error de almacenamiento` : "", linked ? `${linked} enlazadas a tus listas` : ""].filter(Boolean).join(" · "), 4500);
+    toast([added ? `Añadidas ${plural(added, "canción", "canciones")}` : (inList || learned ? "" : "No se añadió ninguna canción"), inList ? `${plural(inList, "canción", "canciones")} en «${pl.name}»` : "", dup ? `${dup} ya estaban en la biblioteca` : "", failed ? `${failed} con error de almacenamiento` : "", linked ? `${linked} enlazadas a tus listas` : "", learned ? `${plural(learned, "ruta guardada", "rutas guardadas")}` : ""].filter(Boolean).join(" · "), 4500);
     return allIds;
   }
   async function filesFromDrop(dt) {
@@ -468,6 +476,47 @@
       toast("Lista eliminada");
     });
   }
+  // Muestra la biblioteca y permite ir añadiendo canciones a la lista con el botón +
+  function addSongsSheet(pid) {
+    const p = getPlaylist(pid); if (!p) return;
+    const ov = document.createElement("div");
+    ov.className = "modal";
+    ov.innerHTML = `<div class="modal-card sheet add-songs" role="dialog" aria-label="Añadir canciones"><h3></h3><input id="as-filter" type="text" placeholder="Buscar en tu biblioteca…" autocomplete="off"><div class="as-count"></div><div class="as-list" id="as-list"></div><div class="modal-actions"><button type="button" class="primary-button" data-done>Listo</button></div></div>`;
+    ov.querySelector("h3").textContent = `Añadir canciones a «${p.name}»`;
+    document.body.appendChild(ov);
+    const listEl = ov.querySelector("#as-list"), countEl = ov.querySelector(".as-count"), filterEl = ov.querySelector("#as-filter");
+    const BATCH = 150;
+    let items = [], shown = 0, added = 0;
+    const inList = (id) => p.ids.includes(id);
+    const row = (t) => { const on = inList(t.id); return `<div class="as-row" data-id="${t.id}">${coverImg(t, "as-thumb")}<div class="as-meta"><b>${esc(t.title)}</b><small>${esc(t.artist || "Artista desconocido")}${t.album ? " · " + esc(t.album) : ""}</small></div><button type="button" class="icon-btn as-btn${on ? " on" : ""}" data-add="${t.id}" title="${on ? "Quitar de la lista" : "Añadir a la lista"}" aria-label="${on ? "Quitar de la lista" : "Añadir a la lista"}">${icon(on ? "check" : "plus", 20)}</button></div>`; };
+    const status = () => { countEl.textContent = `${plural(p.ids.filter((i) => tmap.has(i)).length, "canción", "canciones")} en la lista${added ? ` · ${added} añadidas ahora` : ""}`; };
+    const more = () => { const next = items.slice(shown, shown + BATCH); shown += next.length; listEl.insertAdjacentHTML("beforeend", next.map(row).join("")); };
+    const fill = () => {
+      const q = norm(filterEl.value.trim());
+      items = sorted(tracks).filter((t) => !q || norm(`${t.title} ${t.artist} ${t.album} ${t.name}`).includes(q));
+      shown = 0; listEl.innerHTML = ""; listEl.scrollTop = 0;
+      if (!items.length) listEl.innerHTML = `<div class="pick-empty">${tracks.length ? "Ninguna canción coincide." : "Tu biblioteca está vacía. Añade música primero."}</div>`; else more();
+    };
+    listEl.addEventListener("scroll", () => { if (shown < items.length && listEl.scrollTop + listEl.clientHeight > listEl.scrollHeight - 300) more(); });
+    listEl.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-add]"); if (!b) return;
+      const id = b.dataset.add, on = !inList(id);
+      p.ids = on ? [...p.ids, id] : p.ids.filter((x) => x !== id);
+      added += on ? 1 : (added > 0 ? -1 : 0);
+      savePlaylists();
+      b.classList.toggle("on", on); b.innerHTML = icon(on ? "check" : "plus", 20);
+      b.title = b.ariaLabel = on ? "Quitar de la lista" : "Añadir a la lista";
+      status();
+    });
+    filterEl.addEventListener("input", fill);
+    const onKey = (e) => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); close(); } };
+    const close = () => { document.removeEventListener("keydown", onKey, true); ov.remove(); renderSidebar(); render(); if (added > 0) toast(`${plural(added, "canción añadida", "canciones añadidas")} a «${p.name}»`); };
+    document.addEventListener("keydown", onKey, true);
+    ov.querySelector("[data-done]").onclick = close;
+    ov.addEventListener("mousedown", (e) => { if (e.target === ov) close(); });
+    fill(); status();
+    if (!isMobile() && !matchMedia("(hover: none)").matches) filterEl.focus();
+  }
   const refreshLists = () => { if (view.name === "playlists" || view.name === "home") render(); };
   // Menú para elegir a qué lista se añade un conjunto de canciones (una lista, un álbum…)
   function pickTargetPlaylist(ids, anchor, { excludeId = null, title = "Añadir a la lista" } = {}) {
@@ -496,6 +545,7 @@
     showMenu([
       { label: "Abrir", icon: "list", fn: () => navigate({ name: "playlist", id }) },
       { label: "Editar nombre y foto", icon: "edit", fn: () => editPlaylist(p) },
+      { label: "Añadir canciones…", icon: "plus", fn: () => addSongsSheet(id) },
       { label: "Duplicar lista", icon: "copy", fn: () => duplicatePlaylist(p) },
       { label: "Añadir sus canciones a otra lista…", icon: "list", fn: () => setTimeout(() => pickTargetPlaylist(sortPl(playlistTracks(p), p.sort || "custom").map((t) => t.id), anchor, { excludeId: id, title: `Añadir «${p.name}» a…` }), 0) },
       { sep: true }, { heading: "Orden de las listas" },
@@ -574,6 +624,7 @@
     ];
     if (matchMedia("(hover: none)").matches) items.push({ label: "Seleccionar varias", icon: "check", fn: () => { selectMode = true; selected.add(id); anchorId = id; syncSelection(); } });
     const tr = tmap.get(id);
+    if (tr && tr.path && native && native.showItemInFolder) items.push({ label: "Mostrar en la carpeta", icon: "folder", fn: () => showTrackFile(id) });
     if (tr && tr.album) items.push({ label: "Ir al álbum", icon: "disc", fn: () => navigate({ name: "album", id: albumKey(tr.album) }) });
     items.push({ sep: true }, { heading: "Añadir a una lista" });
     playlists.forEach((p) => items.push({ label: p.name, icon: "list", checked: p.ids.includes(id), fn: () => togglePlaylistTrack(p.id, id) }));
@@ -907,9 +958,9 @@
     ctxPos = i;
     playTrack(order[i], null);
   }
-  function prev() {
+  function prev(forceTrack = false) {
     if (!curId) return;
-    if (audio.currentTime > 3) { audio.currentTime = 0; return; }
+    if (!forceTrack && audio.currentTime > 3) { audio.currentTime = 0; return; }
     if (history.length) { playTrack(history.pop(), null, { noHistory: true }); return; }
     if (order.length) playTrack(order[(ctxPos - 1 + order.length) % order.length], null, { noHistory: true });
   }
@@ -932,7 +983,7 @@
     const box = $("np-card"), t = tmap.get(curId);
     const top = `<div class="np-top"><b>Reproduciendo ahora</b><button class="icon-btn sm" data-q="close" title="Ocultar panel (Q)" aria-label="Ocultar panel">${icon("x", 18)}</button></div>`;
     if (!t) { box.innerHTML = `${top}<img class="np-art poke" src="${LOGO}" alt=""><p class="np-empty">Elige una canción y aquí verás su portada, sus detalles y lo que viene después.</p>`; return; }
-    const on = liked.has(t.id), ext = (t.name.split(".").pop() || "").toUpperCase();
+    const on = liked.has(t.id);
     const inLists = playlists.filter((pl) => pl.ids.includes(t.id));
     const same = t.artist ? tracks.filter((x) => x.artist === t.artist) : [];
     const more = same.filter((x) => x.id !== t.id).slice(0, 4);
@@ -941,7 +992,7 @@
     const small = (m) => `<button class="np-song" data-act="np-play" data-id="${m.id}">${coverImg(m, "q-thumb")}<span class="q-meta"><b>${esc(m.title)}</b><small>${fmt(m.duration)}</small></span></button>`;
     box.innerHTML = `${top}${coverImg(t, "np-art")}
       <div class="np-title"><div class="np-names"><h3>${esc(t.title)}</h3>${t.artist ? `<button class="np-link" data-act="np-artist" data-id="${t.id}">${esc(t.artist)}</button>` : '<span class="np-sub">Artista desconocido</span>'}</div><button class="icon-btn sm${on ? " on" : ""}" data-act="like" data-id="${t.id}" title="Favorito" aria-label="Favorito">${icon("heart", 22, on)}</button></div>
-      <dl class="np-info">${t.album ? row("Álbum", `<button class="np-link" data-act="open-album" data-id="${esc(albumKey(t.album))}">${esc(t.album)}</button>`) : ""}${row("Pista", t.track ? "n.º " + t.track : "")}${row("Duración", fmt(t.duration))}${row("Formato", `${esc(ext)} · ${fmtSize(t.size)}`)}${row("Añadida", new Date(t.added).toLocaleDateString("es", { day: "numeric", month: "long", year: "numeric" }))}</dl>
+      <dl class="np-info">${row("Álbum", t.album ? `<button class="np-link" data-act="open-album" data-id="${esc(albumKey(t.album))}">${esc(t.album)}</button>` : '<span class="np-sub">Álbum desconocido</span>')}</dl>
       ${inLists.length ? `<div class="np-lists"><small>En tus listas</small><div>${inLists.map((pl) => `<button class="chip" data-act="open-pl" data-id="${esc(pl.id)}">${esc(pl.name)}</button>`).join("")}</div></div>` : ""}
       ${t.artist ? `<div class="np-about"><small>Acerca del artista</small><b>${esc(t.artist)}</b><span>${plural(same.length, "canción", "canciones")} en tu biblioteca · ${fmtTotal(same.reduce((a, x) => a + x.duration, 0))}</span>${more.map(small).join("")}</div>` : ""}
       ${nx ? `<div class="np-next"><small>Siguiente</small><button class="np-song" data-act="np-next">${coverImg(nx, "q-thumb")}<span class="q-meta"><b>${esc(nx.title)}</b><small>${esc(nx.artist || "Artista desconocido")}</small></span></button></div>` : ""}`;
@@ -958,7 +1009,7 @@
     $("q-rest").innerHTML = `<div class="q-head"><h2>Cola</h2><div class="q-head-btns"><button class="ghost-button sm" data-q="add"><span class="ic">${icon("plus", 16)}</span>Añadir</button><button class="icon-btn sm" data-q="close" title="Cerrar" aria-label="Cerrar">${icon("x", 18)}</button></div></div>
       <div class="q-body"><div class="q-now-sec"><h3>Reproduciendo ahora</h3>${curId ? item(curId, 0, "now") : '<p class="q-empty">No hay nada sonando.</p>'}</div>
       <h3>Siguiente en la cola${userQueue.length ? '<button data-q="clear">Vaciar</button>' : ""}</h3>${userQueue.length ? userQueue.map((id, i) => item(id, i, "user")).join("") : '<p class="q-empty">Vacía. Usa «Añadir a la cola» en cualquier canción, o el botón Añadir. Puedes arrastrar para reordenar.</p>'}
-      <h3>${settings.shuffle ? "A continuación (aleatorio)" : "A continuación"}</h3>${shown.length ? shown.map((id, i) => item(id, i, "order")).join("") + (upcoming.length > shown.length ? `<p class="q-empty">…y ${upcoming.length - shown.length} más</p>` : "") : `<p class="q-empty">${settings.repeat === "all" ? "Al terminar vuelve a empezar." : "No quedan canciones después de esta."}</p>`}</div>`;
+      <h3>${settings.shuffle ? "A continuación (aleatorio)" : "A continuación"}${shown.length > 1 ? '<button data-q="reshuffle">Barajar de nuevo</button>' : ""}</h3>${shown.length ? shown.map((id, i) => item(id, i, "order")).join("") + (upcoming.length > shown.length ? `<p class="q-empty">…y ${upcoming.length - shown.length} más</p>` : "") : `<p class="q-empty">${settings.repeat === "all" ? "Al terminar vuelve a empezar." : "No quedan canciones después de esta."}</p>`}</div>`;
   }
   async function pickTracks(title, confirm) {
     const r = await sheet({
@@ -982,6 +1033,7 @@
     if (q) {
       const act = q.dataset.q;
       if (act === "close") toggleQueue(false);
+      else if (act === "reshuffle") reshuffle();
       else if (act === "clear") { userQueue = []; saveQueue(); renderQueue(); }
       else if (act === "remove") { userQueue.splice(Number(q.dataset.i), 1); saveQueue(); renderQueue(); }
       else if (act === "add") { const ids = await pickTracks("Añadir a la cola", "Añadir"); if (ids) enqueue(ids); }
@@ -1045,6 +1097,7 @@
   }
   function updateModes() {
     $("shuffle").classList.toggle("active", settings.shuffle);
+    $("reshuffle").hidden = !settings.shuffle; $("fp-reshuffle").hidden = !settings.shuffle;
     $("repeat").classList.toggle("active", settings.repeat !== "off");
     $("repeat").innerHTML = icon(settings.repeat === "one" ? "repeat1" : "repeat", 18);
     $("repeat").title = { off: "Repetir: desactivado", all: "Repetir: toda la cola", one: "Repetir: esta canción" }[settings.repeat];
@@ -1062,6 +1115,16 @@
   $("play-pause").onclick = togglePlay;
   $("next").onclick = () => next(false);
   $("previous").onclick = prev;
+  // Vuelve a repartir al azar lo que queda por sonar (la canción actual se mantiene)
+  function reshuffle() {
+    if (!ctx.length) { toast("No hay nada que barajar"); return; }
+    if (!settings.shuffle) { settings.shuffle = true; saveSettings(); updateModes(); }
+    buildOrder(ctx.includes(curId) ? curId : null);
+    renderQueue(); toast("Orden aleatorio barajado de nuevo");
+  }
+  $("reshuffle").innerHTML = icon("refresh", 17);
+  $("reshuffle").onclick = reshuffle;
+  $("fp-reshuffle").onclick = reshuffle;
   $("shuffle").onclick = () => {
     settings.shuffle = !settings.shuffle; saveSettings(); updateModes();
     if (ctx.length) { buildOrder(ctx.includes(curId) ? curId : null); renderQueue(); }
@@ -1137,11 +1200,11 @@
     const recents = [...tracks].sort((a, b) => b.added - a.added).slice(0, 8);
     const total = tracks.reduce((s, t) => s + t.duration, 0);
     return `<h1 class="page-title" id="greeting">${greeting()}</h1>
-      <div class="welcome"><div class="welcome-text"><h2>Tu música, sin cuentas ni anuncios</h2><p>${tracks.length ? `${countText(tracks.length)} · ${fmtTotal(total)} guardadas en este equipo. Tus listas y favoritos se conservan al cerrar.` : "Añade tus archivos de audio una vez y se quedan guardados aquí. También puedes arrastrarlos a la ventana."}</p>
+      <div class="welcome"><div class="welcome-text"><h2>Tu música, sin cuentas ni anuncios</h2><p>${tracks.length ? `${countText(tracks.length)} · ${fmtTotal(total)} · ${fmtSize(tracks.reduce((a, t) => a + t.size, 0))} guardadas en este equipo. Tus listas y favoritos se conservan al cerrar.` : "Añade tus archivos de audio una vez y se quedan guardados aquí. También puedes arrastrarlos a la ventana."}</p>
       <div class="welcome-actions">${tracks.length ? `<button class="primary-button" data-act="play-all-lib"><span class="ic">${icon("play", 16, true)}</span>Reproducir todo</button><button class="ghost-button" data-act="shuffle-all-lib"><span class="ic">${icon("shuffle", 16)}</span>Aleatorio</button>` : `<button class="primary-button" data-act="import"><span class="ic">${icon("plus", 18)}</span>Añadir música</button>`}</div></div>
       <img class="hero-img" src="${LOGO}" alt=""></div>
       ${pendingBanner()}<div class="section-head"><h2>Acceso rápido</h2></div>
-      <div class="quick-grid"><button class="quick-card" data-act="go" data-view="library"><span class="mini-art">${icon("library", 26)}</span><span>Toda la música</span></button><button class="quick-card" data-act="go" data-view="albums"><span class="mini-art">${icon("disc", 26)}</span><span>Álbumes</span></button><button class="quick-card" data-act="go" data-view="liked"><span class="mini-art fav">${icon("heart", 26, true)}</span><span>Tus favoritos</span></button>${playlists.slice(0, 6).map((p) => `<button class="quick-card" data-act="open-pl" data-id="${esc(p.id)}"><span class="mini-art">${plPhotoUrl(p) ? `<img src="${plPhotoUrl(p)}" alt="">` : icon("note", 26)}</span><span>${esc(p.name)}</span></button>`).join("")}</div>
+      <div class="quick-grid"><button class="quick-card" data-act="go" data-view="library"><span class="mini-art">${icon("library", 26)}</span><span>Toda la música</span></button><button class="quick-card" data-act="go" data-view="albums"><span class="mini-art">${icon("disc", 26)}</span><span>Álbumes</span></button><button class="quick-card" data-act="storage"><span class="mini-art">${icon("database", 26)}</span><span>Mi almacenamiento</span></button><button class="quick-card" data-act="go" data-view="liked"><span class="mini-art fav">${icon("heart", 26, true)}</span><span>Tus favoritos</span></button>${playlists.slice(0, 6).map((p) => `<button class="quick-card" data-act="open-pl" data-id="${esc(p.id)}"><span class="mini-art">${plPhotoUrl(p) ? `<img src="${plPhotoUrl(p)}" alt="">` : icon("note", 26)}</span><span>${esc(p.name)}</span></button>`).join("")}</div>
       <div class="section-head"><h2>Añadidas recientemente</h2><small>${tracks.length ? "Doble clic para escuchar · Ctrl+clic para elegir varias" : ""}</small></div>${rowsHtml(recents, { queueIds: all })}`;
   }
   function searchResults() {
@@ -1154,7 +1217,7 @@
   }
   function viewLibrary() {
     const list = sorted(tracks);
-    return `<h1 class="page-title">Tu biblioteca</h1>${playBar(list.length)}<div class="section-head"><h2>Canciones</h2><span>${sortSelect()}</span></div>${rowsHtml(list)}`;
+    return `<h1 class="page-title">Tu biblioteca</h1>${libInfo()}${playBar(list.length)}<div class="section-head"><h2>Canciones</h2><span>${sortSelect()}</span></div>${rowsHtml(list)}`;
   }
   function viewAlbums() {
     const list = getAlbums();
@@ -1190,9 +1253,9 @@
     const cover = list.find((t) => t.coverUrl); const own = plPhotoUrl(p);
     const total = list.reduce((s, t) => s + t.duration, 0);
     return `<div class="playlist-head"><button class="playlist-cover pl-photo" data-act="pl-photo" title="Cambiar foto" aria-label="Cambiar foto de la lista">${own ? `<img src="${own}" alt="">` : cover ? `<img src="${cover.coverUrl}" alt="">` : `<img class="logo" src="${LOGO}" alt="">`}<span class="pl-photo-hint"><span class="ic">${icon("edit", 30)}</span><b>Cambiar foto</b></span></button><div><div class="eyebrow">Lista</div><h1>${esc(p.name)}</h1><p>${countText(list.length)}${list.length ? " · " + fmtTotal(total) : ""}</p></div></div>
-      <div class="action-bar">${list.length ? `<button class="round-play" data-act="play-all" title="Reproducir" aria-label="Reproducir">${icon("play", 24, true)}</button><button class="icon-btn" data-act="shuffle-all" title="Aleatorio" aria-label="Aleatorio">${icon("shuffle", 24)}</button>` : ""}<button class="icon-btn" data-act="rename-pl" title="Editar nombre y foto" aria-label="Editar nombre y foto">${icon("edit", 22)}</button><button class="icon-btn" data-act="delete-pl" title="Eliminar lista" aria-label="Eliminar lista">${icon("trash", 22)}</button><button class="icon-btn lab" data-act="pl-dup" title="Duplicar lista" aria-label="Duplicar lista">${icon("copy", 22)}<span class="lt">Duplicar</span></button><button class="icon-btn lab" data-act="pl-into" title="Añadir esta lista a otra lista" aria-label="Añadir esta lista a otra lista">${icon("list", 22)}<span class="lt">Añadir a otra lista</span></button><button class="ghost-button sm" data-act="pl-add-files"><span class="ic">${icon("plus", 16)}</span>Añadir música</button></div>
+      <div class="action-bar">${list.length ? `<button class="round-play" data-act="play-all" title="Reproducir" aria-label="Reproducir">${icon("play", 24, true)}</button><button class="icon-btn" data-act="shuffle-all" title="Aleatorio" aria-label="Aleatorio">${icon("shuffle", 24)}</button>` : ""}<button class="icon-btn" data-act="rename-pl" title="Editar nombre y foto" aria-label="Editar nombre y foto">${icon("edit", 22)}</button><button class="icon-btn" data-act="delete-pl" title="Eliminar lista" aria-label="Eliminar lista">${icon("trash", 22)}</button><button class="icon-btn lab" data-act="pl-dup" title="Duplicar lista" aria-label="Duplicar lista">${icon("copy", 22)}<span class="lt">Duplicar</span></button><button class="icon-btn lab" data-act="pl-into" title="Añadir esta lista a otra lista" aria-label="Añadir esta lista a otra lista">${icon("list", 22)}<span class="lt">Añadir a otra lista</span></button><button class="ghost-button sm" data-act="pl-add-songs"><span class="ic">${icon("plus", 16)}</span>Añadir canciones</button><button class="ghost-button sm" data-act="pl-add-files" title="Importar archivos de música de tu equipo a esta lista"><span class="ic">${icon("upload", 16)}</span>Importar archivos</button></div>
       ${list.length > 1 ? `<div class="pl-tools"><label>Ordenar por <select id="pl-sort" aria-label="Ordenar la lista">${PL_SORTS.map(([v, l]) => `<option value="${v}"${mode === v ? " selected" : ""}>${l}</option>`).join("")}</select></label>${custom ? '<small>Arrastra las canciones para ordenarlas a tu gusto, o usa «Mover…» en su menú ⋯.</small>' : '<button class="ghost-button sm" data-act="pl-keep-order">Guardar este orden como mío</button>'}</div>` : ""}
-      ${rowsHtml(list, { emptyMsg: "Esta lista está vacía", reorder: custom && list.length > 1 })}${list.length ? "" : `<p class="eyebrow" style="text-align:center;margin-top:10px">Abre el menú ${"⋯"} de cualquier canción y elige «Añadir a una lista», o arrastra aquí archivos de música desde tu equipo.</p>`}`;
+      ${rowsHtml(list, { emptyMsg: "Esta lista está vacía", reorder: custom && list.length > 1 })}${list.length ? "" : `<div class="empty-cta"><button class="primary-button" data-act="pl-add-songs"><span class="ic">${icon("plus", 18)}</span>Añadir canciones</button><p class="eyebrow">También puedes arrastrar aquí archivos de música desde tu equipo.</p></div>`}`;
   }
   function render() {
     renderSidebar(); updateNav();
@@ -1201,7 +1264,7 @@
     if (view.name === "search") {
       const sb = $("search-box");
       sb.oninput = () => { query = sb.value; $("results").innerHTML = searchResults(); markPlaying(); };
-      if (!sb.value) sb.focus();
+      if (!sb.value && !isMobile() && !matchMedia("(hover: none)").matches) sb.focus();   // en el móvil el teclado solo sale al tocar la barra
     }
     syncSelection();
     const sort = $("sort");
@@ -1220,6 +1283,8 @@
         case "like": toggleLike(id); break;
         case "menu": menuFor(id, el); break;
         case "import": importTarget = null; $("file-picker").click(); break;
+        case "storage": storageSheet(); break;
+        case "show-file": showTrackFile(id); break;
         case "np-artist": { const t = tmap.get(id); if (t && t.artist) { query = t.artist; navigate({ name: "search", id: null }); } break; }
         case "np-play": { const t = tmap.get(id); if (t) playTrack(id, tracks.filter((x) => x.artist === t.artist).map((x) => x.id)); break; }
         case "np-next": next(false); break;
@@ -1227,6 +1292,7 @@
         case "pl-dup": { const p = getPlaylist(view.id); if (p) duplicatePlaylist(p); break; }
         case "pl-into": { const p = getPlaylist(view.id); if (p) pickTargetPlaylist(sortPl(playlistTracks(p), p.sort || "custom").map((t) => t.id), el, { excludeId: p.id, title: `Añadir «${p.name}» a…` }); break; }
         case "album-into": { const a = getAlbums().find((x) => x.key === view.id); if (a) pickTargetPlaylist(a.tracks.map((t) => t.id), el, { title: `Añadir «${a.name}» a…` }); break; }
+        case "pl-add-songs": { const pl = getPlaylist(view.id); if (pl) addSongsSheet(pl.id); break; }
         case "pl-add-files": importTarget = view.id; $("file-picker").click(); break;
         case "go": navigate({ name: el.dataset.view, id: null }); break;
         case "open-pl": navigate({ name: "playlist", id }); break;
@@ -1545,90 +1611,78 @@
         body.querySelector("#bk-import").onclick = () => body.querySelector("#bk-file").click();
         body.querySelector("#bk-file").onchange = async (ev) => { const f = ev.target.files[0]; ev.target.value = ""; if (!f) return; const apply = body.querySelector("#bk-meta").checked; close(); await importBackup(f, { applyMeta: apply }); };
         const miss = body.querySelector("#bk-missing"); if (miss) miss.onclick = () => { close(); showMissing(); };
-        if (native) { const sb = document.createElement("button"); sb.type = "button"; sb.className = "ghost-button"; sb.textContent = "Sincronizar con el móvil por cable…"; sb.onclick = () => { close(); syncSheet(); }; body.appendChild(sb); }
         return () => true;
       }
     });
   }
   $("backup-btn").onclick = backupSheet;
 
-  /* ---------- sincronizar con el móvil por cable USB (solo app de escritorio) ---------- */
-  const native = window.salamenceNative || null;
-  let syncState = { running: false, port: 0, pin: "", addresses: [] };
-  const syncLog = [];
-  function logSync(msg) {
-    syncLog.unshift(new Date().toLocaleTimeString("es") + " · " + msg); syncLog.length = Math.min(syncLog.length, 12);
-    const el = document.getElementById("sync-log"); if (el) el.textContent = syncLog.join("\n");
-  }
-  const SYNC_CHUNK = 2 * 1024 * 1024;
-  const guessMime = (name) => ({ mp3: "audio/mpeg", flac: "audio/flac", wav: "audio/wav", m4a: "audio/mp4", aac: "audio/aac", ogg: "audio/ogg", opus: "audio/ogg" }[name.split(".").pop().toLowerCase()] || "");
-  let ingestQueue = Promise.resolve();
-  // Responde a lo que pide el servidor de sincronización (el móvil descarga o envía cosas)
-  async function syncHandle(type, p) {
-    if (type === "info") return { tracks: tracks.length, playlists: playlists.length, liked: liked.size, bytes: tracks.reduce((a, t) => a + t.size, 0), version: APP_VERSION };
-    if (type === "tracks") return tracks.map((t) => ({ key: trackKey(t), name: t.name, size: t.size, title: t.title, artist: t.artist })).sort((a, b) => a.name.localeCompare(b.name, "es"));
-    if (type === "backup") return new Uint8Array(await (await buildBackup(false)).arrayBuffer());
-    if (type === "file") {
-      const t = tracks.find((x) => trackKey(x) === p.key);
-      if (!t) throw new Error("Canción no encontrada");
-      return new Uint8Array(await t.file.slice(p.start, p.end).arrayBuffer());
+  /* ---------- cuánto ocupa tu música y dónde está ---------- */
+  const dirOf = (p) => p.slice(0, Math.max(p.lastIndexOf("\\"), p.lastIndexOf("/")));
+  const FORMAT_COLORS = ["#3bb8ea", "#e0566c", "#f2b84b", "#7bd88f", "#a98bff", "#ff9d5c", "#5fd4c8"];
+  function libraryStats() {
+    const fmts = new Map(), dirs = new Map();
+    let bytes = 0, secs = 0, noPath = 0;
+    for (const t of tracks) {
+      bytes += t.size; secs += t.duration;
+      const ext = (t.name.split(".").pop() || "?").toUpperCase();
+      const f = fmts.get(ext) || { name: ext, n: 0, bytes: 0 }; f.n++; f.bytes += t.size; fmts.set(ext, f);
+      if (t.path) { const d = dirOf(t.path) || t.path; const g = dirs.get(d) || { dir: d, n: 0, bytes: 0 }; g.n++; g.bytes += t.size; dirs.set(d, g); } else noPath++;
     }
-    if (type === "incoming") {
-      const parts = [];
-      for (let off = 0; off < p.size; off += SYNC_CHUNK) parts.push(await native.readTemp(p.id, off, Math.min(SYNC_CHUNK, p.size - off)));
-      const file = new File(parts, p.name, { type: guessMime(p.name) });
-      const job = ingestQueue.then(async () => { if (/\.salamence$/i.test(p.name)) await importBackup(file, { applyMeta: true }); else await importFiles([file]); });
-      ingestQueue = job.catch(() => {});
-      await job;
-      return { ok: true };
-    }
-    throw new Error("Petición desconocida: " + type);
+    return { bytes, secs, noPath, fmts: [...fmts.values()].sort((a, b) => b.bytes - a.bytes), dirs: [...dirs.values()].sort((a, b) => b.bytes - a.bytes) };
   }
-  async function syncSheet() {
-    if (!native) { toast("La sincronización por cable necesita la app de escritorio (el instalador). No está en la versión del navegador.", 6500); return; }
-    try { Object.assign(syncState, await native.syncStatus()); } catch { /* sin estado previo */ }
+  const libInfo = () => {
+    if (!tracks.length) return "";
+    const st = libraryStats();
+    return `<div class="lib-info"><span>${plural(tracks.length, "canción", "canciones")} · ${fmtTotal(st.secs)} · <b>${fmtSize(st.bytes)}</b></span><button class="ghost-button sm" data-act="storage"><span class="ic">${icon("database", 16)}</span>Almacenamiento y carpeta</button></div>`;
+  };
+  async function openFolderFor(p) {
+    try {
+      const r = await native.openPath(p);
+      if (r && r.ok === false) toast("No encuentro esa carpeta: ¿la moviste o la borraste?", 5000);
+    } catch { toast("No se pudo abrir la carpeta", 4000); }
+  }
+  async function showTrackFile(id) {
+    const t = tmap.get(id); if (!t || !t.path || !native || !native.showItemInFolder) return;
+    try { const r = await native.showItemInFolder(t.path); if (r && r.ok === false) toast("No encuentro ese archivo: ¿lo moviste o lo borraste?", 5000); }
+    catch { toast("No se pudo abrir la carpeta", 4000); }
+  }
+  async function storageSheet() {
+    const st = libraryStats();
+    let est = null, persisted = null;
+    try { if (navigator.storage && navigator.storage.estimate) est = await navigator.storage.estimate(); } catch { /* sin datos */ }
+    try { if (navigator.storage && navigator.storage.persisted) persisted = await navigator.storage.persisted(); } catch { /* sin datos */ }
+    let userData = "";
+    try { if (native && native.userDataPath) userData = await native.userDataPath(); } catch { /* sin ruta */ }
+    const canOpen = !!(native && native.openPath);
     await sheet({
-      title: "Sincronizar con el móvil", confirm: "Cerrar",
+      title: "Mi música y almacenamiento", confirm: "Cerrar",
       mount(body) {
-        const paint = () => {
-          if (!syncState.running) {
-            body.innerHTML = `<p>Pasa tus listas y canciones entre el PC y el móvil usando el cable USB.</p>
-              <ol class="sync-steps"><li>Conecta el móvil al PC con el cable.</li><li>En el móvil activa <b>Compartir conexión por USB</b> (Ajustes &gt; Conexiones &gt; Punto de acceso y compartir conexión).</li><li>Pulsa <b>Activar sincronización</b> aquí.</li><li>En el móvil abre Chrome, escribe la dirección que aparecerá e introduce el PIN.</li></ol>
-              <p class="sync-note">Si Windows pregunta por el cortafuegos, permite el acceso también en redes públicas. Funciona igual por Wi-Fi si los dos están en la misma red.</p>
-              <button type="button" class="primary-button" id="sync-start">Activar sincronización</button>`;
-            body.querySelector("#sync-start").onclick = async (ev) => {
-              ev.currentTarget.disabled = true;
-              try { syncState = Object.assign({}, syncState, await native.syncStart({ port: 8787 }), { running: true }); logSync("Sincronización activada"); }
-              catch (err) { toast("No se pudo activar la sincronización: " + ((err && err.message) || err), 7000); }
-              paint();
-            };
-          } else {
-            const addrs = (syncState.addresses || []).map((a) => { const u = `http://${a.address}:${syncState.port}`; return `<div class="sync-addr"><div><b>${esc(u)}</b><small>${esc(a.hint)}</small></div><button type="button" class="ghost-button sm" data-copy="${esc(u)}">Copiar</button></div>`; }).join("")
-              || '<p class="sync-note">No encuentro ninguna red. Comprueba que el cable está conectado y que «Compartir conexión por USB» está activado en el móvil.</p>';
-            body.innerHTML = `<p>En el móvil abre Chrome y escribe una de estas direcciones:</p>${addrs}
-              <div class="sync-pin"><small>PIN</small><b>${esc(syncState.pin)}</b></div>
-              <p class="sync-note">Desde esa página descargas tus listas y canciones, o envías las del móvil al PC. Para terminar, impórtalas en la app del móvil.</p>
-              <pre id="sync-log" class="sync-log">${esc(syncLog.join("\n"))}</pre>
-              <button type="button" class="ghost-button" id="sync-stop">Detener sincronización</button>`;
-            body.querySelectorAll("[data-copy]").forEach((b) => { b.onclick = () => { if (navigator.clipboard) navigator.clipboard.writeText(b.dataset.copy).then(() => toast("Dirección copiada")).catch(() => {}); }; });
-            body.querySelector("#sync-stop").onclick = async () => { try { await native.syncStop(); } catch { /* nada */ } syncState.running = false; logSync("Sincronización detenida"); paint(); };
-          }
-        };
-        paint();
+        const bar = st.fmts.map((f, i) => `<i style="flex:${Math.max(f.bytes, 1)};background:${FORMAT_COLORS[i % FORMAT_COLORS.length]}" title="${esc(f.name)}: ${fmtSize(f.bytes)}"></i>`).join("");
+        const legend = st.fmts.map((f, i) => `<div class="st-row"><span class="st-dot" style="background:${FORMAT_COLORS[i % FORMAT_COLORS.length]}"></span><b>${esc(f.name)}</b><span>${plural(f.n, "canción", "canciones")}</span><em>${fmtSize(f.bytes)}</em></div>`).join("");
+        const big = [...tracks].sort((a, b) => b.size - a.size).slice(0, 5).map((t) => `<div class="st-row"><span class="st-name">${esc(t.title)}</span><em>${fmtSize(t.size)}</em></div>`).join("");
+        let where;
+        if (canOpen) {
+          const rows = st.dirs.slice(0, 8).map((d) => `<div class="st-dir"><div><b title="${esc(d.dir)}">${esc(d.dir)}</b><small>${plural(d.n, "canción", "canciones")} · ${fmtSize(d.bytes)}</small></div><button type="button" class="ghost-button sm" data-open="${esc(d.dir)}"><span class="ic">${icon("folder", 16)}</span>Abrir</button></div>`).join("");
+          where = `${rows || '<p class="st-note">Todavía no sé en qué carpeta están tus canciones.</p>'}${st.dirs.length > 8 ? `<p class="st-note">…y ${st.dirs.length - 8} carpetas más.</p>` : ""}
+            ${st.noPath ? `<p class="st-note">No conozco la carpeta de ${plural(st.noPath, "canción", "canciones")} (las importaste antes de esta versión o llegaron en una copia). Pulsa <b>Añadir carpeta</b> y elige tu carpeta de música: no se duplica nada, solo aprendo dónde están.</p><button type="button" class="ghost-button sm" id="st-addfolder"><span class="ic">${icon("folder", 16)}</span>Añadir carpeta…</button>` : ""}
+            ${userData ? `<div class="st-dir"><div><b title="${esc(userData)}">${esc(userData)}</b><small>Donde la app guarda su copia de tu biblioteca</small></div><button type="button" class="ghost-button sm" data-open="${esc(userData)}"><span class="ic">${icon("folder", 16)}</span>Abrir</button></div>` : ""}`;
+        } else {
+          where = `<p class="st-note">Estás usando la app en el navegador o en el móvil: tus canciones se guardan <b>dentro de la app</b>, no en una carpeta que se pueda abrir desde aquí. Los archivos originales siguen donde los tenías. La app de escritorio sí puede abrir la carpeta de tu música.</p>`;
+        }
+        const usage = est && est.usage != null ? `<div class="st-block"><h4>Espacio que usa la app</h4><p><b>${fmtSize(est.usage)}</b>${est.quota ? ` de ${fmtSize(est.quota)} disponibles (${nfmt((est.usage / est.quota) * 100, 1)} %)` : ""}</p><p class="st-note">La app guarda una copia de tus canciones, por eso puede ser algo más que el tamaño de la música (incluye portadas y datos).${persisted === false ? " El navegador podría borrar estos datos si falta espacio." : ""}</p></div>` : "";
+        body.innerHTML = `<div class="st-hero"><small>Tu música ocupa</small><b>${fmtSize(st.bytes)}</b><span>${plural(tracks.length, "canción", "canciones")} · ${fmtTotal(st.secs)}</span></div>
+          ${tracks.length ? `<div class="st-block"><h4>Por formato</h4><div class="st-bar">${bar}</div>${legend}</div>` : '<p class="st-note">Todavía no tienes música. Pulsa «Añadir música» para empezar.</p>'}
+          ${usage}
+          ${tracks.length ? `<div class="st-block"><h4>Las que más ocupan</h4>${big}</div>` : ""}
+          <div class="st-block"><h4>Dónde está tu música</h4>${where}</div>`;
+        body.addEventListener("click", (e) => {
+          const o = e.target.closest("[data-open]"); if (o) { openFolderFor(o.dataset.open); return; }
+          if (e.target.closest("#st-addfolder")) { body.closest(".modal").querySelector("[data-x]").click(); $("folder-picker").click(); }
+        });
         return () => true;
       }
     });
-  }
-  if (native) {
-    native.onAsk(async ({ id, type, params }) => {
-      try { native.answer(id, await syncHandle(type, params || {})); }
-      catch (err) { native.answer(id, null, String((err && err.message) || err)); }
-    });
-    native.onEvent((ev) => {
-      if (ev.type === "connected") { logSync("Móvil conectado desde " + ev.ip); toast("Móvil conectado a la sincronización", 4000); }
-      else if (ev.type === "received") logSync("Recibido: " + ev.name + " (" + fmtSize(ev.size) + ")");
-    });
-    $("sync-btn").hidden = false; $("sync-btn").onclick = syncSheet;
   }
 
   /* ---------- reproductor a pantalla completa y navegación (móvil) ---------- */
@@ -1673,9 +1727,38 @@
   $("fp-queue").onclick = () => { closeFull(false); setTimeout(() => $("queue-btn").click(), 50); };
   $("fp-seek").oninput = () => { if (audio.duration) audio.currentTime = (Number($("fp-seek").value) / 1000) * audio.duration; $("fp-seek").style.setProperty("--p", Number($("fp-seek").value) / 10 + "%"); };
   $("fp-prev").innerHTML = icon("prev", 24, true); $("fp-next").innerHTML = icon("next", 24, true); $("fp-shuffle").innerHTML = icon("shuffle", 22);
-  let touchY = null;
-  fp.addEventListener("touchstart", (e) => { touchY = e.target.closest("input") ? null : e.touches[0].clientY; }, { passive: true });
-  fp.addEventListener("touchend", (e) => { if (touchY !== null && e.changedTouches[0].clientY - touchY > 90) closeFull(false); touchY = null; }, { passive: true });
+  let touchY = null, coverSwiped = false;
+  fp.addEventListener("touchstart", (e) => { coverSwiped = false; touchY = e.target.closest("input") ? null : e.touches[0].clientY; }, { passive: true });
+  fp.addEventListener("touchend", (e) => { if (touchY !== null && !coverSwiped && e.changedTouches[0].clientY - touchY > 90) closeFull(false); touchY = null; }, { passive: true });
+  // Deslizar la portada: a la izquierda pasa a la siguiente canción, a la derecha vuelve a la anterior
+  (() => {
+    const art = $("fp-art");
+    let sx = null, sy = 0, dx = 0, moving = false;
+    const settle = (anim) => { art.style.transition = anim ? "transform .2s ease, opacity .2s ease" : "none"; art.style.transform = ""; art.style.opacity = ""; };
+    art.addEventListener("touchstart", (e) => { if (e.touches.length !== 1 || !curId) { sx = null; return; } sx = e.touches[0].clientX; sy = e.touches[0].clientY; dx = 0; moving = false; art.style.transition = "none"; }, { passive: true });
+    art.addEventListener("touchmove", (e) => {
+      if (sx === null) return;
+      const x = e.touches[0].clientX - sx, y = e.touches[0].clientY - sy;
+      if (!moving && Math.abs(x) > 10 && Math.abs(x) > Math.abs(y) * 1.2) moving = true;
+      if (!moving) return;
+      dx = x; art.style.transform = `translateX(${x}px) rotate(${x / 30}deg)`; art.style.opacity = String(1 - Math.min(0.6, Math.abs(x) / 500));
+    }, { passive: true });
+    art.addEventListener("touchend", () => {
+      if (sx === null) return;
+      const was = moving, x = dx; sx = null; moving = false; coverSwiped = was;
+      if (!was || Math.abs(x) < Math.min(80, innerWidth * 0.2)) { settle(true); return; }
+      const dir = x < 0 ? -1 : 1;
+      art.style.transition = "transform .18s ease-in, opacity .18s ease-in";
+      art.style.transform = `translateX(${dir * innerWidth}px) rotate(${dir * 12}deg)`; art.style.opacity = "0";
+      setTimeout(() => {
+        if (dir < 0) next(false); else prev(true);
+        art.style.transition = "none"; art.style.transform = `translateX(${-dir * 60}px)`; art.style.opacity = "0";
+        void art.offsetWidth;
+        art.style.transition = "transform .22s ease-out, opacity .22s ease-out"; art.style.transform = ""; art.style.opacity = "";
+      }, 180);
+    }, { passive: true });
+    art.addEventListener("touchcancel", () => { sx = null; moving = false; settle(true); }, { passive: true });
+  })();
   if (matchMedia("(hover: none)").matches) document.body.classList.add("touch");
 
   /* ---------- orden personalizado: arrastrar canciones y listas ---------- */

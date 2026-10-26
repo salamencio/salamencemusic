@@ -19,8 +19,6 @@ Tienes tres formas de usarlo, de la más rápida a la más "de verdad":
 
 ANDROID: lee ANDROID-LEEME.txt (instalar en el móvil y pasar tus listas del PC al móvil).
 
-SINCRONIZAR CON EL MÓVIL POR CABLE: lee SINCRONIZAR-POR-CABLE.txt (solo app de escritorio).
-
 CÓMO SE USA
 - "Añadir música" o "Añadir carpeta", o arrastra archivos/carpetas a la ventana.
 - Menú ⋯ (o clic derecho) en una canción > "Editar detalles": título, artista, álbum y portada.

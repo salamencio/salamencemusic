@@ -35,7 +35,6 @@
           <button class="icon-btn" id="forward" aria-label="Adelante" title="Adelante" data-icon="chevR" data-size="20"></button>
         </div>
         <div class="top-actions">
-          <button id="sync-btn" class="icon-btn" title="Sincronizar con el móvil por cable USB" aria-label="Sincronizar con el móvil" data-icon="phone" data-size="20" hidden></button>
           <button id="backup-btn" class="icon-btn" title="Copia de seguridad: exportar o importar" aria-label="Copia de seguridad" data-icon="database" data-size="20"></button>
           <button id="add-folder" class="ghost-button"><span data-icon="folder" data-size="18"></span>Añadir carpeta</button>
           <button id="add-music" class="primary-button"><span data-icon="plus" data-size="18"></span>Añadir música</button>
@@ -65,6 +64,7 @@
       <div class="controls">
         <div class="control-buttons">
           <button id="shuffle" class="icon-btn" title="Aleatorio" aria-label="Aleatorio"></button>
+          <button id="reshuffle" class="icon-btn" title="Barajar de nuevo" aria-label="Barajar de nuevo" hidden></button>
           <button id="previous" class="icon-btn" title="Anterior" aria-label="Anterior"></button>
           <button id="play-pause" class="play-button" title="Reproducir (Espacio)" aria-label="Reproducir"></button>
           <button id="next" class="icon-btn" title="Siguiente" aria-label="Siguiente"></button>
@@ -87,6 +87,7 @@
     <div class="fp-meta"><div class="fp-text"><strong id="fp-title">Elige una canción</strong><span id="fp-artist"></span></div><button id="fp-like" class="icon-btn" aria-label="Favorito"></button></div>
     <div class="fp-seek"><input id="fp-seek" class="slider" type="range" min="0" max="1000" value="0" aria-label="Posición"><div class="fp-times"><span id="fp-elapsed">0:00</span><span id="fp-duration">0:00</span></div></div>
     <div class="fp-controls"><button id="fp-shuffle" class="icon-btn" aria-label="Aleatorio"></button><button id="fp-prev" class="icon-btn" aria-label="Anterior"></button><button id="fp-play" class="play-button big" aria-label="Reproducir"></button><button id="fp-next" class="icon-btn" aria-label="Siguiente"></button><button id="fp-repeat" class="icon-btn" aria-label="Repetir"></button></div>
+    <button id="fp-reshuffle" class="ghost-button sm fp-reshuffle" hidden>Barajar de nuevo</button>
   </section>
 
   <div id="menu-back" class="menu-back" hidden></div>
