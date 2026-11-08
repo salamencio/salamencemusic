@@ -422,3 +422,30 @@ tr.dragging,.pl-link.dragging{opacity:.4}
 .st-dir small{color:var(--muted)}
 .st-block .ghost-button{justify-self:start}
 .st-dir .ghost-button{flex-shrink:0}
+
+/* Arrastrar en la cola y hacia las listas */
+.q-item.drop-before{box-shadow:inset 0 2px 0 var(--accent)}
+.q-item.drop-after{box-shadow:inset 0 -2px 0 var(--accent)}
+.q-item.dragging{opacity:.4}
+body.row-dragging .q-drop,body.q-dragging body.row-dragging .pl-link,body.row-dragging #new-playlist{outline:1px dashed #3a4452;outline-offset:-1px}
+.pl-link.drop-into,#new-playlist.drop-into{background:#3bb8ea2e;outline:2px solid var(--accent);outline-offset:-2px;color:var(--text)}
+.track-table tr[draggable=true]{cursor:default}
+.track-table tr[data-reorder]{cursor:grab}
+
+.q-sec{border-radius:10px;padding-bottom:6px}
+.q-sec.drop-before{outline:2px dashed var(--accent);outline-offset:-2px;background:#3bb8ea12}
+
+/* Animación de las portadas al cambiar de canción */
+@keyframes coverNext{from{opacity:0;transform:translateX(34px) rotate(3deg) scale(.9)}to{opacity:1;transform:none}}
+@keyframes coverPrev{from{opacity:0;transform:translateX(-34px) rotate(-3deg) scale(.9)}to{opacity:1;transform:none}}
+@keyframes coverPop{from{opacity:0;transform:scale(.86)}60%{opacity:1;transform:scale(1.03)}to{opacity:1;transform:none}}
+.cover-next{animation:coverNext .45s cubic-bezier(.2,.8,.2,1)}
+.cover-prev{animation:coverPrev .45s cubic-bezier(.2,.8,.2,1)}
+.cover-pop{animation:coverPop .4s ease-out}
+#current-art.cover-next,#current-art.cover-prev,#current-art.cover-pop{animation-duration:.35s}
+
+.as-help{margin:0;color:var(--muted);font-size:13px}
+@media(max-width:760px){
+  #main{touch-action:pan-y}
+  .player{touch-action:none}
+}

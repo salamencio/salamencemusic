@@ -1,4 +1,4 @@
-# Salamence music  (versión 1.4.1)
+# Salamence music  (versión 1.6.0)
 
 Reproductor de música local con interfaz oscura estilo streaming. Sin cuentas, sin anuncios, sin conexión.
 
@@ -67,3 +67,16 @@ npm run dist:linux # AppImage (en Linux)
 
 ## Novedades 1.4.1
 - El panel derecho muestra solo canción, artista y álbum (se quitan formato, tamaño, duración, fecha y ubicación). «Mostrar en la carpeta» sigue en el menú ⋯ de cada canción.
+
+## Novedades 1.5.0
+- **Cola**: arrastra cualquier canción para cambiar el orden, tanto en «Siguiente en la cola» como en «A continuación»; también puedes pasar canciones de una sección a otra y soltar en la cola canciones de tus listas o de la biblioteca.
+- **Arrastrar a otras listas**: con ratón, arrastra canciones (una o varias seleccionadas) desde una lista, el álbum, la biblioteca o los resultados hasta una lista de la barra lateral para añadirlas, o hasta «+» para crear una lista nueva con ellas. En el móvil sigue el menú ⋯ (pulsación larga).
+
+## Novedades 1.5.1
+- **Animación de portadas**: al pasar de canción, la portada entra deslizándose (desde la derecha al avanzar, desde la izquierda al retroceder, con un pequeño «pop» si eliges otra directamente) en el reproductor, el panel derecho y el reproductor grande del móvil. Se desactiva con «reducir movimiento» del sistema.
+- Cola: arrastrar y soltar más fiable (las secciones no cambian de tamaño al arrastrar; puedes soltar sobre cualquier parte de «Siguiente en la cola» o «A continuación»).
+
+## Novedades 1.6.0
+- **Álbumes manuales**: la pestaña Álbumes ya no se llena sola. Pulsa «Añadir álbum» para elegir, entre los álbumes que traen tus canciones, los que quieras ver (sus canciones entran solas, también las que añadas después), o «Crear álbum nuevo» para hacer uno a mano. «Quitar álbum» lo saca de la pestaña sin tocar las canciones. Los álbumes que tenías antes hay que volver a añadirlos una vez. La copia de seguridad guarda tu lista de álbumes.
+- **Móvil**: desliza el dedo de lado sobre la pantalla para pasar entre Inicio, Buscar, Biblioteca, Álbumes y Listas.
+- **Móvil, reproductor de abajo**: desliza a la izquierda para la siguiente canción, a la derecha para la anterior y hacia arriba para abrir el reproductor grande.
