@@ -17,7 +17,10 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
-      - uses: android-actions/setup-android@v3
+      - name: Configurar Android SDK
+  uses: android-actions/setup-android@v4.0.4
+  with:
+    packages: 'platform-tools'
 
       - name: Preparar el proyecto Android
         working-directory: app-android
