@@ -4,7 +4,7 @@
   const audio = $("audio");
   const content = $("content");
   const LOGO = "assets/salamence.png";
-  const APP_VERSION = "1.6.0";
+  const APP_VERSION = "1.6.1";
   const native = window.salamenceNative || null;   // solo existe en la app de escritorio
   const AUDIO_RE = /\.(mp3|flac|wav|m4a|aac|ogg|oga|opus|wma|weba)$/i;
 
@@ -1166,6 +1166,47 @@
     renderNowCard(); syncFull();
   }
   function markPlaying() { document.querySelectorAll("tr[data-id]").forEach((r) => r.classList.toggle("playing", r.dataset.id === curId)); }
+  let androidControlsReady = false;
+  let androidNotificationActive = false;
+  function syncAndroidNotification(t) {
+    if (!isNative() || !window.MusicControls) return;
+    if (!t) {
+      androidNotificationActive = false;
+      try { window.MusicControls.destroy(); } catch {}
+      return;
+    }
+    const cv = coverOf(t);
+    const coverSrc = cv.src.startsWith("blob:") ? LOGO : cv.src;
+    window.MusicControls.create({
+      track: t.title,
+      artist: t.artist || "Artista desconocido",
+      album: t.album || "",
+      cover: coverSrc,
+      isPlaying: !audio.paused,
+      dismissable: false,
+      hasPrev: true,
+      hasNext: true,
+      hasClose: true,
+      ticker: "Reproduciendo " + t.title
+    });
+    androidNotificationActive = true;
+    if (!androidControlsReady) {
+      androidControlsReady = true;
+      window.MusicControls.subscribe((action) => {
+        const msg = JSON.parse(action).message;
+        if (msg === "music-controls-next") next(false);
+        else if (msg === "music-controls-previous") prev();
+        else if (msg === "music-controls-pause") audio.pause();
+        else if (msg === "music-controls-play") audio.play().catch(() => {});
+        else if (msg === "music-controls-destroy") {
+          androidNotificationActive = false;
+          audio.pause();
+          try { window.MusicControls.destroy(); } catch {}
+        }
+      });
+      window.MusicControls.listen();
+    }
+  }
   function setCurrentUI() {
     const t = tmap.get(curId);
     const dir = coverDir; coverDir = 0; lastDir = dir;
@@ -1182,11 +1223,19 @@
         navigator.mediaSession.metadata = new MediaMetadata({ title: t.title, artist: t.artist || "Artista desconocido", album: t.album || "", artwork: [{ src: new URL(coverOf(t).src, location.href).href, sizes: "512x512" }] });
       } catch { /* no soportado */ }
     }
+    syncAndroidNotification(t);
   }
   function updatePlayState() {
     $("play-pause").innerHTML = icon(audio.paused ? "play" : "pause", 18, true);
     $("play-pause").title = audio.paused ? "Reproducir (Espacio)" : "Pausar (Espacio)";
     document.body.classList.toggle("is-playing", !audio.paused);
+    if (isNative() && window.MusicControls) {
+      if (!audio.paused && !androidNotificationActive && curId) {
+        syncAndroidNotification(tmap.get(curId));
+      } else {
+        try { window.MusicControls.updateIsPlaying(!audio.paused); } catch {}
+      }
+    }
     syncFull();
   }
   function updateProgress() {
@@ -2048,7 +2097,7 @@
   setInterval(refreshGreeting, 30000);
   document.addEventListener("visibilitychange", refreshGreeting);
   if (!isMobile() && matchMedia("(min-width: 1000px)").matches && settings.panel !== false) toggleQueue(true);
-  if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) {
+  if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol) && !isNative()) {   // dentro del APK no hace falta: los archivos ya van incluidos
     const hadSW = !!navigator.serviceWorker.controller;
     navigator.serviceWorker.register("sw.js").catch(() => {});
     navigator.serviceWorker.addEventListener("controllerchange", () => {
