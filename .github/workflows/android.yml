@@ -15,7 +15,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Busca la carpeta app-android aunque hayas subido el proyecto dentro de otra carpeta
       - name: Localizar la carpeta del proyecto
         run: |
           APP=$(find . -type d -name app-android -not -path "*/node_modules/*" | head -n 1)
@@ -26,7 +25,6 @@ jobs:
           fi
           echo "APP_DIR=$APP" >> "$GITHUB_ENV"
           echo "Proyecto encontrado en: $APP"
-          ls -la "$APP" "$APP/.."
 
       - uses: actions/setup-node@v4
         with:
@@ -37,8 +35,7 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - name: Aceptar licencias de Android SDK
-        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null 2>&1 || true
+      - uses: android-actions/setup-android@v3
 
       - name: Preparar el proyecto Android
         working-directory: ${{ env.APP_DIR }}
@@ -47,6 +44,7 @@ jobs:
           npx cap telemetry off || true
           node prep.js
           npx cap add android
+          node setup-native.js
           npx @capacitor/assets generate --android --assetPath resources || echo "Sin iconos personalizados (se usa el de Capacitor)"
           npx cap sync android
 
@@ -57,7 +55,7 @@ jobs:
             cp "$APP_DIR/debug.keystore" ~/.android/debug.keystore
             echo "Firma fija aplicada"
           else
-            echo "No hay debug.keystore: se usará una firma nueva (las actualizaciones pedirán desinstalar antes)"
+            echo "No hay debug.keystore: se usará una firma nueva"
           fi
 
       - name: Compilar el APK
