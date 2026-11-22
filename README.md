@@ -1,4 +1,4 @@
-# Salamence music  (versión 1.6.0)
+# Salamence music  (versión 1.6.1)
 
 Reproductor de música local con interfaz oscura estilo streaming. Sin cuentas, sin anuncios, sin conexión.
 
@@ -80,3 +80,6 @@ npm run dist:linux # AppImage (en Linux)
 - **Álbumes manuales**: la pestaña Álbumes ya no se llena sola. Pulsa «Añadir álbum» para elegir, entre los álbumes que traen tus canciones, los que quieras ver (sus canciones entran solas, también las que añadas después), o «Crear álbum nuevo» para hacer uno a mano. «Quitar álbum» lo saca de la pestaña sin tocar las canciones. Los álbumes que tenías antes hay que volver a añadirlos una vez. La copia de seguridad guarda tu lista de álbumes.
 - **Móvil**: desliza el dedo de lado sobre la pantalla para pasar entre Inicio, Buscar, Biblioteca, Álbumes y Listas.
 - **Móvil, reproductor de abajo**: desliza a la izquierda para la siguiente canción, a la derecha para la anterior y hacia arriba para abrir el reproductor grande.
+
+## Novedades 1.6.1
+- **App normal de Android (APK)**: el flujo de GitHub (`.github/workflows/android.yml`) compila el APK en la nube y lo publica en «Releases»; usa una firma fija (`app-android/debug.keystore`) para poder actualizar sin desinstalar. Iconos adaptables incluidos. Guía en `CREAR-APK.txt`. Dentro del APK la app no registra el service worker de la web.

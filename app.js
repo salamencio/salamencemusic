@@ -1166,46 +1166,95 @@
     renderNowCard(); syncFull();
   }
   function markPlaying() { document.querySelectorAll("tr[data-id]").forEach((r) => r.classList.toggle("playing", r.dataset.id === curId)); }
-  let androidControlsReady = false;
-  let androidNotificationActive = false;
-  function syncAndroidNotification(t) {
-    if (!isNative() || !window.MusicControls) return;
+  let nativeMediaBound = false;
+  let lastNativeSyncAt = 0;
+  let cachedNativeCover = { id: null, b64: "" };
+  function getNativeMediaPlugin() {
+    return isNative() && window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.MusicControls
+      ? window.Capacitor.Plugins.MusicControls
+      : null;
+  }
+  function bindNativeMediaEvents() {
+    const mc = getNativeMediaPlugin();
+    if (!mc || nativeMediaBound) return;
+    nativeMediaBound = true;
+    mc.addListener("mediaAction", (ev) => {
+      const act = ev && ev.action;
+      if (act === "play") audio.play().catch(() => {});
+      else if (act === "pause") audio.pause();
+      else if (act === "next") next(false);
+      else if (act === "previous") prev();
+      else if (act === "seekTo" && typeof ev.positionMs === "number") {
+        audio.currentTime = Math.max(0, ev.positionMs / 1000);
+        syncNativeMediaState(true);
+      }
+    });
+  }
+  function imageSrcToDataUrl(src) {
+    return new Promise((resolve) => {
+      if (!src) { resolve(""); return; }
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        try {
+          const size = 256;
+          const canvas = document.createElement("canvas");
+          canvas.width = size;
+          canvas.height = size;
+          const ctx2d = canvas.getContext("2d");
+          ctx2d.fillStyle = "#0d1116";
+          ctx2d.fillRect(0, 0, size, size);
+          const scale = Math.min(size / (img.naturalWidth || size), size / (img.naturalHeight || size));
+          const w = (img.naturalWidth || size) * scale;
+          const h = (img.naturalHeight || size) * scale;
+          ctx2d.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+          resolve(canvas.toDataURL("image/jpeg", 0.85));
+        } catch {
+          resolve("");
+        }
+      };
+      img.onerror = () => resolve("");
+      img.src = src;
+    });
+  }
+  async function syncNativeMediaMetadata(t) {
+    const mc = getNativeMediaPlugin();
+    if (!mc) return;
+    bindNativeMediaEvents();
     if (!t) {
-      androidNotificationActive = false;
-      try { window.MusicControls.destroy(); } catch {}
+      cachedNativeCover = { id: null, b64: "" };
+      mc.stopService().catch(() => {});
       return;
     }
-    const cv = coverOf(t);
-    const coverSrc = cv.src.startsWith("blob:") ? LOGO : cv.src;
-    window.MusicControls.create({
-      track: t.title,
+    const d = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : (t.duration || 0);
+    let coverBase64 = cachedNativeCover.id === t.id ? cachedNativeCover.b64 : "";
+    if (cachedNativeCover.id !== t.id) {
+      const cv = coverOf(t);
+      coverBase64 = await imageSrcToDataUrl(cv.src);
+      if (curId === t.id) cachedNativeCover = { id: t.id, b64: coverBase64 };
+    }
+    mc.updateMetadata({
+      title: t.title || "Salamence music",
       artist: t.artist || "Artista desconocido",
       album: t.album || "",
-      cover: coverSrc,
+      durationMs: Math.round(d * 1000),
+      coverBase64
+    }).catch(() => {});
+  }
+  function syncNativeMediaState(force = false) {
+    const mc = getNativeMediaPlugin();
+    if (!mc || !curId) return;
+    bindNativeMediaEvents();
+    const now = Date.now();
+    if (!force && now - lastNativeSyncAt < 900) return;
+    lastNativeSyncAt = now;
+    const t = tmap.get(curId);
+    const d = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : (t ? t.duration : 0);
+    mc.updateState({
       isPlaying: !audio.paused,
-      dismissable: false,
-      hasPrev: true,
-      hasNext: true,
-      hasClose: true,
-      ticker: "Reproduciendo " + t.title
-    });
-    androidNotificationActive = true;
-    if (!androidControlsReady) {
-      androidControlsReady = true;
-      window.MusicControls.subscribe((action) => {
-        const msg = JSON.parse(action).message;
-        if (msg === "music-controls-next") next(false);
-        else if (msg === "music-controls-previous") prev();
-        else if (msg === "music-controls-pause") audio.pause();
-        else if (msg === "music-controls-play") audio.play().catch(() => {});
-        else if (msg === "music-controls-destroy") {
-          androidNotificationActive = false;
-          audio.pause();
-          try { window.MusicControls.destroy(); } catch {}
-        }
-      });
-      window.MusicControls.listen();
-    }
+      positionMs: Math.round((audio.currentTime || 0) * 1000),
+      durationMs: Math.round(d * 1000)
+    }).catch(() => {});
   }
   function setCurrentUI() {
     const t = tmap.get(curId);
@@ -1223,19 +1272,14 @@
         navigator.mediaSession.metadata = new MediaMetadata({ title: t.title, artist: t.artist || "Artista desconocido", album: t.album || "", artwork: [{ src: new URL(coverOf(t).src, location.href).href, sizes: "512x512" }] });
       } catch { /* no soportado */ }
     }
-    syncAndroidNotification(t);
+    syncNativeMediaMetadata(t);
+    syncNativeMediaState(true);
   }
   function updatePlayState() {
     $("play-pause").innerHTML = icon(audio.paused ? "play" : "pause", 18, true);
     $("play-pause").title = audio.paused ? "Reproducir (Espacio)" : "Pausar (Espacio)";
     document.body.classList.toggle("is-playing", !audio.paused);
-    if (isNative() && window.MusicControls) {
-      if (!audio.paused && !androidNotificationActive && curId) {
-        syncAndroidNotification(tmap.get(curId));
-      } else {
-        try { window.MusicControls.updateIsPlaying(!audio.paused); } catch {}
-      }
-    }
+    syncNativeMediaState(true);
     syncFull();
   }
   function updateProgress() {
@@ -1245,6 +1289,7 @@
     $("duration").textContent = fmt(d);
     const p = d ? Math.min(1000, (audio.currentTime / d) * 1000) : 0;
     $("seek").value = p; $("seek").style.setProperty("--p", p / 10 + "%");
+    syncNativeMediaState(false);
     syncFullProgress();
   }
   function updateModes() {

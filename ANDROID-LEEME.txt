@@ -32,15 +32,9 @@ En el móvil:
 ============================================================
 B) CREAR UN APK (instalador .apk)  [opcional, sin Android Studio]
 ============================================================
-Esta vía no la he podido probar aquí. Usa GitHub para compilar el APK en la nube:
-  1. Sube el contenido de esta carpeta a un repositorio de GitHub (el archivo
-     ".github/workflows/android.yml" debe quedar en la raíz del repositorio).
-  2. Pestaña "Actions" > "Crear APK de Android" > "Run workflow".
-  3. Al terminar (unos 5-10 min), abre la ejecución y descarga "salamence-music-apk".
-     Dentro está app-debug.apk.
-  4. Pásalo al móvil e instálalo (Android pedirá permitir "instalar apps desconocidas").
-Aviso: en un APK la reproducción con la pantalla apagada puede cortarse en algunos móviles.
-Si te pasa, usa la opción A, que no tiene ese problema.
+Lee CREAR-APK.txt: explica paso a paso cómo conseguir el .apk con GitHub (gratis, sin instalar nada
+en el PC) y cómo instalarlo y actualizarlo. Es la "app normal" de Android.
+Límite: con la pantalla apagada la música puede cortarse en algunos móviles; la opción A no.
 
 ============================================================
 PASAR TUS LISTAS DEL PC AL MÓVIL

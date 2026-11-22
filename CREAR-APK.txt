@@ -1,0 +1,26 @@
+CREAR LA APP DE ANDROID (APK) SIN INSTALAR NADA EN EL PC      versión 1.6.2
+
+Un APK es la app "normal" de Android: icono propio, ventana propia, controles en la barra
+de notificaciones y pantalla de bloqueo (estilo Spotify) y reproducción en segundo plano.
+
+1) Cuenta y repositorio
+   - Entra en github.com y crea una cuenta gratis (si no tienes).
+   - Arriba a la derecha: "+" > "New repository". Ponle un nombre (por ejemplo salamence-music) y créalo.
+
+2) Sube el proyecto
+   - En el repositorio vacío: "uploading an existing file".
+   - Descomprime este ZIP y arrastra TODO el contenido de la carpeta salamence-music
+     (index.html, app.js, styles.css, assets, app-android, .github, etc.). Pulsa "Commit changes".
+   - Comprueba que existe  .github/workflows/android.yml  en el repositorio. Si tu navegador saltó
+     la carpeta .github por empezar por punto: "Add file" > "Create new file", escribe como nombre
+     .github/workflows/android.yml  y pega dentro el contenido de ese archivo.
+
+3) Compilar
+   - Pestaña "Actions". Si te lo pide, pulsa "I understand my workflows, go ahead and enable them".
+   - A la izquierda elige "Crear APK de Android" > botón "Run workflow" > "Run workflow".
+   - Tarda unos 6-10 minutos. Al terminar verás un check verde.
+
+4) Descargar e instalar
+   - En la página principal del repositorio: a la derecha, "Releases" > la última > descarga
+     salamence-music.apk (también queda guardado en Actions > la ejecución > Artifacts).
+   - Ábrelo en el móvil e instálalo (permite "Instalar apps desconocidas" si Android lo pide).
